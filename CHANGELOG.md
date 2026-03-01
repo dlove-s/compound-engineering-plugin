@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Remove docs/reports and docs/decisions directories** — only `docs/plans/` is retained as living documents that track implementation progress
 - **OpenCode commands as Markdown** — commands are now `.md` files with deep-merged config, permissions default to none ([#201](https://github.com/EveryInc/compound-engineering-plugin/pull/201)) — thanks [@0ut5ider](https://github.com/0ut5ider)!
+- **Fix changelog GitHub link** ([#215](https://github.com/EveryInc/compound-engineering-plugin/pull/215)) — thanks [@XSAM](https://github.com/XSAM)!
+- **Update Claude Code install command in README** ([#218](https://github.com/EveryInc/compound-engineering-plugin/pull/218)) — thanks [@ianguelman](https://github.com/ianguelman)!
 
 ---
 

@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`create-agent-skill` / `heal-skill` YAML crash** — `argument-hint` values containing special characters now properly quoted to prevent YAML parse errors in the Claude Code TUI. ([#219](https://github.com/EveryInc/compound-engineering-plugin/pull/219)) — thanks [@solon](https://github.com/solon)!
-- **`resolve-pr-parallel` skill name** — Renamed from `resolve_pr_parallel` (underscore) to `resolve-pr-parallel` (hyphen) to match the standard naming convention.
+- **`resolve-pr-parallel` skill name** — Renamed from `resolve_pr_parallel` (underscore) to `resolve-pr-parallel` (hyphen) to match the standard naming convention. ([#202](https://github.com/EveryInc/compound-engineering-plugin/pull/202)) — thanks [@rburnham52](https://github.com/rburnham52)!
 
 ---
 

@@ -25,7 +25,7 @@ export default defineCommand({
     to: {
       type: "string",
       default: "opencode",
-      description: "Target format (opencode | codex | droid | cursor | pi | copilot | gemini | kiro | qwen)",
+      description: "Target format (opencode | codex | droid | cursor | pi | copilot | gemini | kiro | openclaw | qwen)",
     },
     output: {
       type: "string",
@@ -41,6 +41,11 @@ export default defineCommand({
       type: "string",
       alias: "pi-home",
       description: "Write Pi output to this Pi root (ex: ~/.pi/agent or ./.pi)",
+    },
+    openclawHome: {
+      type: "string",
+      alias: "openclaw-home",
+      description: "Write OpenClaw output to this extensions root (ex: ~/.openclaw/extensions)",
     },
     qwenHome: {
       type: "string",
@@ -89,6 +94,7 @@ export default defineCommand({
       const outputRoot = resolveOutputRoot(args.output)
       const codexHome = resolveTargetHome(args.codexHome, path.join(os.homedir(), ".codex"))
       const piHome = resolveTargetHome(args.piHome, path.join(os.homedir(), ".pi", "agent"))
+      const openclawHome = resolveTargetHome(args.openclawHome, path.join(os.homedir(), ".openclaw", "extensions"))
       const qwenHome = resolveTargetHome(args.qwenHome, path.join(os.homedir(), ".qwen", "extensions"))
 
       const options = {
@@ -102,7 +108,7 @@ export default defineCommand({
         throw new Error(`Target ${targetName} did not return a bundle.`)
       }
       const hasExplicitOutput = Boolean(args.output && String(args.output).trim())
-      const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome, qwenHome, plugin.manifest.name, hasExplicitOutput)
+      const primaryOutputRoot = resolveTargetOutputRoot(targetName, outputRoot, codexHome, piHome, openclawHome, qwenHome, plugin.manifest.name, hasExplicitOutput)
       await target.write(primaryOutputRoot, bundle)
       console.log(`Installed ${plugin.manifest.name} to ${primaryOutputRoot}`)
 
@@ -123,7 +129,7 @@ export default defineCommand({
           console.warn(`Skipping ${extra}: no output returned.`)
           continue
         }
-        const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome, qwenHome, plugin.manifest.name, hasExplicitOutput)
+        const extraRoot = resolveTargetOutputRoot(extra, path.join(outputRoot, extra), codexHome, piHome, openclawHome, qwenHome, plugin.manifest.name, hasExplicitOutput)
         await handler.write(extraRoot, extraBundle)
         console.log(`Installed ${plugin.manifest.name} to ${extraRoot}`)
       }
@@ -180,6 +186,7 @@ function resolveTargetOutputRoot(
   outputRoot: string,
   codexHome: string,
   piHome: string,
+  openclawHome: string,
   qwenHome: string,
   pluginName: string,
   hasExplicitOutput: boolean,
@@ -205,6 +212,9 @@ function resolveTargetOutputRoot(
   if (targetName === "kiro") {
     const base = hasExplicitOutput ? outputRoot : process.cwd()
     return path.join(base, ".kiro")
+  }
+  if (targetName === "openclaw") {
+    return path.join(openclawHome, pluginName)
   }
   return outputRoot
 }

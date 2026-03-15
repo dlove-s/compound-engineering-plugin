@@ -103,6 +103,9 @@ Before generating approaches, challenge the request to catch misframing. Match d
 - What user or business outcome actually matters here?
 - What happens if we do nothing?
 - Is there a nearby framing that creates more user value without more carrying cost? If so, what complexity does it add?
+- Given the current project state, user goal, and constraints, what is the single highest-leverage move right now: the request as framed, a reframing, one adjacent addition, a simplification, or doing nothing?
+- Favor moves that compound value, reduce future carrying cost, or make the product meaningfully more useful or compelling
+- Use the result to sharpen the conversation, not to bulldoze the user's intent
 
 **Deep** — Standard questions plus:
 - What durable capability should this create in 6-12 months?
@@ -129,6 +132,9 @@ Use the platform's interactive question mechanism when available. Otherwise, pre
 ### Phase 2: Explore Approaches
 
 If multiple plausible directions remain, propose **2-3 concrete approaches** based on research and conversation. Otherwise state the recommended direction directly.
+
+When useful, include one deliberately higher-upside alternative:
+- Identify what adjacent addition or reframing would most increase usefulness, compounding value, or durability without disproportionate carrying cost. Present it as a challenger option alongside the baseline, not as the default. Omit it when the work is already obviously over-scoped or the baseline request is clearly the right move.
 
 For each approach, provide:
 - Brief description (2-3 sentences)
@@ -222,6 +228,7 @@ Before finalizing, check:
 - Do any requirements depend on something claimed to be out of scope?
 - Are any unresolved items actually product decisions rather than planning questions?
 - Did implementation details leak in when they shouldn't have?
+- Is there a low-cost change that would make this materially more useful?
 
 If planning would need to invent product behavior, scope boundaries, or success criteria, the brainstorm is not complete yet.
 

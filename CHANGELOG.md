@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Release numbering now follows the repository `v*` tag line. Starting at `v2.34.0`, the root CLI package and this changelog stay on that shared version stream. Older entries below retain the previous `0.x` CLI numbering.
 
+# [2.38.0](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.37.1...v2.38.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* **skill:** align compound-refresh question tool guidance ([c2582fa](https://github.com/EveryInc/compound-engineering-plugin/commit/c2582fab675fe1571f32730634e66411aadc1820))
+* **skills:** allow direct commit on main as non-default option ([0c333b0](https://github.com/EveryInc/compound-engineering-plugin/commit/0c333b08c9369d359613d030aba0fe16e929a665))
+* **skills:** autonomous mode adapts to available permissions ([684814d](https://github.com/EveryInc/compound-engineering-plugin/commit/684814d9514a72c59da4d8f309f73ff0f7661d58))
+* **skills:** enforce branch creation when committing on main ([6969014](https://github.com/EveryInc/compound-engineering-plugin/commit/696901453212aa43cff2400a75cfc6629e79939e))
+* **skills:** enforce full report output in autonomous mode ([2ae6fc4](https://github.com/EveryInc/compound-engineering-plugin/commit/2ae6fc44580093ff6162fcb48145901a54138e9f))
+* **skills:** improve ce:compound-refresh interaction and auto-archive behavior ([0dff943](https://github.com/EveryInc/compound-engineering-plugin/commit/0dff9431ceec8a24e576712c48198e8241c24752))
+* **skills:** include tool constraint in subagent task prompts ([db8c84a](https://github.com/EveryInc/compound-engineering-plugin/commit/db8c84acb4f72c4ce3e1612365ff912fdfe3cea1))
+* **skills:** prevent auto-archive when problem domain is still active ([4201361](https://github.com/EveryInc/compound-engineering-plugin/commit/42013612bde6e13152ade806ba7f861ce5d38e03))
+* **skills:** remove prescriptive branch naming in compound-refresh ([e3e7748](https://github.com/EveryInc/compound-engineering-plugin/commit/e3e7748c564a24e74d86fdf847dd499284404cc8))
+* **skills:** require specific branch names based on what was refreshed ([b7e4391](https://github.com/EveryInc/compound-engineering-plugin/commit/b7e43910fb1a2173e857c4c6b7fa6af9f9ca1be7))
+* **skills:** specify markdown format for autonomous report output ([c271bd4](https://github.com/EveryInc/compound-engineering-plugin/commit/c271bd4729793de8f3ec2e47dd5fe3e8de65c305))
+* **skills:** steer compound-refresh subagents toward file tools over shell commands ([187571c](https://github.com/EveryInc/compound-engineering-plugin/commit/187571ce97ca8c840734b4677cceb0a4c37c84bb))
+* **skills:** strengthen autonomous mode to prevent blocking on user input ([d3aff58](https://github.com/EveryInc/compound-engineering-plugin/commit/d3aff58d9e48c44266f09cf765d85b41bf95a110))
+* **skills:** use actual branch name in commit options instead of 'this branch' ([a47f7d6](https://github.com/EveryInc/compound-engineering-plugin/commit/a47f7d67a25ff23ce8c2bb85e92fdce85bed3982))
+
+
+### Features
+
+* **skills:** add autonomous mode to ce:compound-refresh ([699f484](https://github.com/EveryInc/compound-engineering-plugin/commit/699f484033f3c895c35fea49e147dd1742bc3d43))
+* **skills:** add ce:compound-refresh skill for learning and pattern maintenance ([bd3088a](https://github.com/EveryInc/compound-engineering-plugin/commit/bd3088a851a3dec999d13f2f78951dfed5d9ac8c))
+* **skills:** add Phase 5 commit workflow to ce:compound-refresh ([d4c12c3](https://github.com/EveryInc/compound-engineering-plugin/commit/d4c12c39fd04526c05cf484a512f9f73e91f5c3d))
+* **skills:** add smart triage, drift classification, and replacement subagents to ce:compound-refresh ([95ad09d](https://github.com/EveryInc/compound-engineering-plugin/commit/95ad09d3e7d96367324c6ec7a10767e51d5788e8))
+
 ## [2.37.1](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.37.0...v2.37.1) (2026-03-16)
 
 

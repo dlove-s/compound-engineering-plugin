@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Release numbering now follows the repository `v*` tag line. Starting at `v2.34.0`, the root CLI package and this changelog stay on that shared version stream. Older entries below retain the previous `0.x` CLI numbering.
 
+# [2.39.0](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.38.0...v2.39.0) (2026-03-16)
+
+
+### Bug Fixes
+
+* drop 'CLI' suffix from Codex and Gemini platform names ([ec8d685](https://github.com/EveryInc/compound-engineering-plugin/commit/ec8d68580f3da65852e72c127cccc6e66326369b))
+* make brainstorm handoff auto-chain and cross-platform ([637653d](https://github.com/EveryInc/compound-engineering-plugin/commit/637653d2edf89c022b9e312ea02c0ac1a305d741))
+* restore 'wait for the user's reply' fallback language ([fca3a40](https://github.com/EveryInc/compound-engineering-plugin/commit/fca3a4019c55c76b9f1ad326cc3d284f5007b8f4))
+
+
+### Features
+
+* add leverage check to brainstorm skill ([0100245](https://github.com/EveryInc/compound-engineering-plugin/commit/01002450cd077b800a917625c5eb6d12da061d0b))
+* instruct brainstorm skill to use platform blocking question tools ([d2c4cee](https://github.com/EveryInc/compound-engineering-plugin/commit/d2c4cee6f9774a5fb2c8ca325c389dadb4a72b1c))
+* refactor brainstorm skill into requirements-first workflow ([4d80a59](https://github.com/EveryInc/compound-engineering-plugin/commit/4d80a59e51b4b2e99ff8c2443e2a1b039d7475c9))
+
 # [2.38.0](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.37.1...v2.38.0) (2026-03-16)
 
 

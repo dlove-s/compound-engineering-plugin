@@ -90,6 +90,21 @@ skills/ce-plan/
 
 The `references/` directory follows existing plugin conventions for supplementary skill files (see AGENTS.md skill compliance checklist — all reference files must be linked with proper markdown links, not bare backtick references).
 
+**Frontmatter handling:** SKILL.md frontmatter (name, description, argument-hint) is parsed by Claude Code at skill registration time. `references/beta.md` is loaded at runtime via Read — its frontmatter would not be processed. To preserve the beta version's intended frontmatter without losing it, add it as an HTML comment at the top of beta.md:
+
+```markdown
+<!-- BETA FRONTMATTER — apply to SKILL.md when promoting beta to stable
+---
+name: skill-name
+description: beta version description
+argument-hint: "[beta argument hint]"
+---
+-->
+
+# Skill Title
+[... beta instructions ...]
+```
+
 ### 5. Orchestration Skills Don't Need Changes
 
 `lfg` and `slfg` call `/ce:plan` and `/deepen-plan` by name. Because routing happens inside the skills themselves, orchestration workflows are unaware of and unaffected by the beta mechanism. This is the primary advantage over the parallel-skill-names approach.

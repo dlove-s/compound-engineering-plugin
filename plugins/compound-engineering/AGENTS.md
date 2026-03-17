@@ -40,7 +40,6 @@ agents/
 
 skills/
 ├── ce-*/          # Core workflow skills (ce:plan, ce:review, etc.)
-├── workflows-*/   # Deprecated aliases for ce:* skills
 └── */             # All other skills
 ```
 
@@ -57,7 +56,7 @@ skills/
 - `/ce:work` - Execute work items systematically
 - `/ce:compound` - Document solved problems
 
-**Why `ce:`?** Claude Code has built-in `/plan` and `/review` commands. The `ce:` namespace (short for compound-engineering) makes it immediately clear these commands belong to this plugin. The legacy `workflows:` prefix is still supported as deprecated aliases that forward to the `ce:*` equivalents.
+**Why `ce:`?** Claude Code has built-in `/plan` and `/review` commands. The `ce:` namespace (short for compound-engineering) makes it immediately clear these commands belong to this plugin.
 
 ## Skill Compliance Checklist
 

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Release numbering now follows the repository `v*` tag line. Starting at `v2.34.0`, the root CLI package and this changelog stay on that shared version stream. Older entries below retain the previous `0.x` CLI numbering.
 
+## [2.41.1](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.41.0...v2.41.1) (2026-03-17)
+
+
+### Bug Fixes
+
+* sync plugin version to 2.41.0 and correct skill counts ([5bc3a0f](https://github.com/EveryInc/compound-engineering-plugin/commit/5bc3a0f469acd6be8100e3ecca7bc9f7e5512af5))
+
 # [2.41.0](https://github.com/EveryInc/compound-engineering-plugin/compare/v2.40.3...v2.41.0) (2026-03-17)
 
 

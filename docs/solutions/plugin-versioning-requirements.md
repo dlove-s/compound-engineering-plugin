@@ -18,9 +18,9 @@ This document applies to release-owned plugin metadata and changelog surfaces fo
 
 The broader repo-level release model now lives in:
 
-- `docs/solutions/workflow/manual-release-please-and-centralized-changelog.md`
+- `docs/solutions/workflow/manual-release-please-github-releases.md`
 
-That doc covers the standing release PR, component ownership across `cli`, `compound-engineering`, `coding-tutor`, and `marketplace`, and the canonical root changelog model. This document stays narrower: it is the plugin-scoped reminder for contributors changing `plugins/compound-engineering/**`.
+That doc covers the standing release PR, component ownership across `cli`, `compound-engineering`, `coding-tutor`, and `marketplace`, and the GitHub Releases model for published release notes. This document stays narrower: it is the plugin-scoped reminder for contributors changing `plugins/compound-engineering/**`.
 
 ## Solution
 
@@ -59,7 +59,7 @@ Before committing changes to compound-engineering plugin:
 
 - Plugin version is release-owned: `plugins/compound-engineering/.claude-plugin/plugin.json`
 - Marketplace entry is release-owned: `.claude-plugin/marketplace.json`
-- Changelog release sections are release-owned: root `CHANGELOG.md`
+- Release notes are release-owned: GitHub release PRs and GitHub Releases
 - Readme: `plugins/compound-engineering/README.md`
 
 ## Example Workflow
@@ -68,7 +68,7 @@ When adding a new agent:
 
 1. Create the agent file in `plugins/compound-engineering/agents/[category]/`
 2. Update `plugins/compound-engineering/README.md`
-3. Leave plugin version selection and canonical changelog generation to release automation
+3. Leave plugin version selection and canonical release-note generation to release automation
 4. Run `bun run release:validate`
 
 ## Prevention
@@ -86,4 +86,4 @@ This documentation serves as a reminder. When maintainers or agents work on this
 - `plugins/compound-engineering/README.md`
 - `package.json`
 - `CHANGELOG.md`
-- `docs/solutions/workflow/manual-release-please-and-centralized-changelog.md`
+- `docs/solutions/workflow/manual-release-please-github-releases.md`

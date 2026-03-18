@@ -5,7 +5,7 @@
     ".": {
       "release-type": "simple",
       "package-name": "cli",
-      "changelog-path": "CHANGELOG.md",
+      "skip-changelog": true,
       "extra-files": [
         {
           "type": "json",
@@ -17,7 +17,7 @@
     "plugins/compound-engineering": {
       "release-type": "simple",
       "package-name": "compound-engineering",
-      "changelog-path": "../../CHANGELOG.md",
+      "skip-changelog": true,
       "extra-files": [
         {
           "type": "json",
@@ -34,7 +34,7 @@
     "plugins/coding-tutor": {
       "release-type": "simple",
       "package-name": "coding-tutor",
-      "changelog-path": "../../CHANGELOG.md",
+      "skip-changelog": true,
       "extra-files": [
         {
           "type": "json",
@@ -51,7 +51,7 @@
     ".claude-plugin": {
       "release-type": "simple",
       "package-name": "marketplace",
-      "changelog-path": "../CHANGELOG.md",
+      "skip-changelog": true,
       "extra-files": [
         {
           "type": "json",

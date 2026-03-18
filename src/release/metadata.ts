@@ -180,39 +180,3 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
 
   return { updates }
 }
-
-export async function updateRootChangelog(options: {
-  root?: string
-  entries: Array<{ component: ReleaseComponent; version: string; date: string; sections: Record<string, string[]> }>
-  write?: boolean
-}): Promise<{ path: string; changed: boolean; content: string }> {
-  const root = options.root ?? process.cwd()
-  const changelogPath = path.join(root, "CHANGELOG.md")
-  const existing = await readText(changelogPath)
-  const renderedEntries = options.entries
-    .map((entry) => renderChangelogEntry(entry.component, entry.version, entry.date, entry.sections))
-    .join("\n\n")
-  const next = `${existing.trimEnd()}\n\n${renderedEntries}\n`
-  const changed = next !== existing
-  if (options.write && changed) {
-    await writeText(changelogPath, next)
-  }
-  return { path: changelogPath, changed, content: next }
-}
-
-export function renderChangelogEntry(
-  component: ReleaseComponent,
-  version: string,
-  date: string,
-  sections: Record<string, string[]>,
-): string {
-  const lines = [`## ${component} v${version} - ${date}`]
-  for (const [section, items] of Object.entries(sections)) {
-    if (items.length === 0) continue
-    lines.push("", `### ${section}`)
-    for (const item of items) {
-      lines.push(`- ${item}`)
-    }
-  }
-  return lines.join("\n")
-}

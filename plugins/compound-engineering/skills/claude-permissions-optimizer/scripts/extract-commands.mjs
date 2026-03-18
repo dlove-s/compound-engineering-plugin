@@ -120,6 +120,10 @@ const RED_PATTERNS = [
   // find with destructive actions (must be before GREEN_BASES check)
   { test: /\bfind\b.*\s-delete\b/, reason: "find -delete permanently removes files" },
   { test: /\bfind\b.*\s-exec\s+rm\b/, reason: "find -exec rm permanently removes files" },
+  // ast-grep rewrite modifies files in place
+  { test: /\b(ast-grep|sg)\b.*--rewrite\b/, reason: "ast-grep --rewrite modifies files in place" },
+  // sed -i edits files in place
+  { test: /\bsed\s+.*-i\b/, reason: "sed -i modifies files in place" },
   // Git irreversible
   { test: /git\s+(?:\S+\s+)*push\s+.*--force(?!-with-lease)/, reason: "Force push overwrites remote history" },
   { test: /git\s+(?:\S+\s+)*push\s+.*\s-f\b/, reason: "Force push overwrites remote history" },
@@ -192,7 +196,7 @@ const GREEN_BASES = new Set([
   "diff", "grep", "rg", "ag", "ack", "which", "whoami", "pwd", "echo",
   "printf", "env", "printenv", "uname", "hostname", "jq", "sort", "uniq",
   "tr", "cut", "less", "more", "man", "type", "realpath", "dirname",
-  "basename", "date", "cal", "cd", "ps", "top", "htop", "free", "uptime",
+  "basename", "date", "ps", "top", "htop", "free", "uptime",
   "id", "groups", "lsof", "open", "xdg-open",
 ]);
 
@@ -219,7 +223,14 @@ const GREEN_COMPOUND = [
   /^(pg_dump|mysqldump)\b(?!.*--clean)/,
   /\b--dry-run\b/,
   /^git\s+clean\s+.*(-[a-z]*n|--dry-run)\b/,  // git clean dry run
-  /^find\b(?!.*(-delete|-exec))/,  // find without destructive flags
+  // NOTE: find is intentionally NOT green. Bash(find *) would also match
+  // find -delete and find -exec rm in Claude Code's allowlist glob matching.
+  // Commands with mode-switching flags: only green when the normalized pattern
+  // is narrow enough that the allowlist glob can't match the destructive form.
+  // Bash(sed -n *) is safe; Bash(sed *) would also match sed -i.
+  /^sed\s+-(?!i\b)[a-zA-Z]\s/,  // sed with a non-destructive flag (matches normalized sed -n *, sed -e *, etc.)
+  /^(ast-grep|sg)\b(?!.*--rewrite)/,  // ast-grep without --rewrite
+  /^find\s+-(?:name|type|path|iname)\s/,  // find with safe predicate flag (matches normalized form)
   // gh CLI read-only operations
   /^gh\s+(pr|issue|run)\s+(view|list|status|diff|checks)\b/,
   /^gh\s+repo\s+(view|list|clone)\b/,
@@ -230,6 +241,7 @@ const GREEN_COMPOUND = [
 const YELLOW_BASES = new Set([
   "mkdir", "touch", "cp", "mv", "tee", "curl", "wget", "ssh", "scp", "rsync",
   "python", "python3", "node", "ruby", "perl", "make", "just",
+  "awk",  // awk can write files; safe forms handled case-by-case if needed
 ]);
 
 // YELLOW: compound patterns
@@ -255,6 +267,16 @@ const YELLOW_COMPOUND = [
 ];
 
 function classify(command) {
+  // Extract the first command from compound chains (&&, ||, ;) and pipes
+  // so that `cd /dir && git branch -D feat` classifies as green (cd),
+  // not red (git branch -D). This matches what normalize() does.
+  const compoundMatch = command.match(/^(.+?)\s*(&&|\|\||;)\s*(.+)$/);
+  if (compoundMatch) return classify(compoundMatch[1].trim());
+  const pipeMatch = command.match(/^(.+?)\s*\|\s*(.+)$/);
+  if (pipeMatch && !/\|\s*(sh|bash|zsh)\b/.test(command)) {
+    return classify(pipeMatch[1].trim());
+  }
+
   // RED check first (highest priority)
   for (const { test, reason } of RED_PATTERNS) {
     if (test.test(command)) return { tier: "red", reason };
@@ -280,20 +302,27 @@ function classify(command) {
 // ── Normalization ──────────────────────────────────────────────────────────
 
 // Risk-modifying flags that must NOT be collapsed into wildcards.
-// Checked as exact token matches (not substring).
-const RISK_FLAGS = new Set([
+// Global flags are always preserved; context-specific flags only matter
+// for certain base commands.
+const GLOBAL_RISK_FLAGS = new Set([
   "--force", "--hard", "-rf", "--privileged", "--no-verify",
   "--system", "--force-with-lease", "-D", "--force-if-includes",
-  "--volumes", "--rmi",
+  "--volumes", "--rmi", "--rewrite", "--delete",
 ]);
 
-// Flags where we need prefix matching (e.g., -f but not --filter)
-function isRiskFlag(token) {
-  if (RISK_FLAGS.has(token)) return true;
-  // -f exactly (not -filter, --filter, etc.)
-  if (token === "-f") return true;
-  // -v exactly for docker (not -verbose)
-  if (token === "-v") return true;
+// Flags that are only risky for specific base commands.
+// -f means force-push in git, force-remove in docker, but pattern-file in grep.
+// -v means remove-volumes in docker-compose, but verbose everywhere else.
+const CONTEXTUAL_RISK_FLAGS = {
+  "-f": new Set(["git", "docker", "rm"]),
+  "-v": new Set(["docker", "docker-compose"]),
+};
+
+function isRiskFlag(token, base) {
+  if (GLOBAL_RISK_FLAGS.has(token)) return true;
+  // Check context-specific flags
+  const contexts = CONTEXTUAL_RISK_FLAGS[token];
+  if (contexts && base && contexts.has(base)) return true;
   // Combined short flags containing risk chars: -rf, -fr, -fR, etc.
   if (/^-[a-zA-Z]*[rf][a-zA-Z]*$/.test(token) && token.length <= 4) return true;
   return false;
@@ -308,6 +337,30 @@ function normalize(command) {
   // Handle pnpm --filter <pkg> <subcommand> specially
   const pnpmFilter = command.match(/^pnpm\s+--filter\s+\S+\s+(\S+)/);
   if (pnpmFilter) return "pnpm --filter * " + pnpmFilter[1] + " *";
+
+  // Handle sed specially -- preserve the mode flag to keep safe patterns narrow.
+  // sed -i (in-place) is destructive; sed -n, sed -e, bare sed are read-only.
+  if (/^sed\s/.test(command)) {
+    if (/\s-i\b/.test(command)) return "sed -i *";
+    const sedFlag = command.match(/^sed\s+(-[a-zA-Z])\s/);
+    return sedFlag ? "sed " + sedFlag[1] + " *" : "sed *";
+  }
+
+  // Handle ast-grep specially -- preserve --rewrite flag.
+  if (/^(ast-grep|sg)\s/.test(command)) {
+    const base = command.startsWith("sg") ? "sg" : "ast-grep";
+    return /\s--rewrite\b/.test(command) ? base + " --rewrite *" : base + " *";
+  }
+
+  // Handle find specially -- preserve key action flags.
+  // find -delete and find -exec rm are destructive; find -name/-type are safe.
+  if (/^find\s/.test(command)) {
+    if (/\s-delete\b/.test(command)) return "find -delete *";
+    if (/\s-exec\s/.test(command)) return "find -exec *";
+    // Extract the first predicate flag for a narrower safe pattern
+    const findFlag = command.match(/\s(-(?:name|type|path|iname))\s/);
+    return findFlag ? "find " + findFlag[1] + " *" : "find *";
+  }
 
   // Handle git -C <dir> <subcommand> -- strip the -C <dir> and normalize the git subcommand
   const gitC = command.match(/^git\s+-C\s+\S+\s+(.+)$/);
@@ -349,7 +402,7 @@ function normalize(command) {
   // Preserve risk-modifying flags in the remaining args
   const preservedFlags = [];
   for (let i = argStart; i < parts.length; i++) {
-    if (isRiskFlag(parts[i])) {
+    if (isRiskFlag(parts[i], base)) {
       preservedFlags.push(parts[i]);
     }
   }
@@ -543,8 +596,9 @@ for (const [pattern, data] of patternGroups) {
 // Only output green (safe) patterns. Yellow, red, and unknown are counted
 // in stats for transparency but not included as arrays.
 const green = [];
+let greenRawCount = 0; // unique raw commands covered by green patterns
 let yellowCount = 0;
-let redCount = 0;
+const redBlocked = [];
 let unclassified = 0;
 const yellowNames = []; // brief list for the footnote
 
@@ -560,13 +614,18 @@ for (const [pattern, data] of patternGroups) {
           .slice(0, 3)
           .map((c) => c.command),
       });
+      greenRawCount += data.rawCommands.length;
       break;
     case "yellow":
       yellowCount++;
       yellowNames.push(pattern.replace(/^Bash\(|\)$/g, "").replace(/ \*$/, ""));
       break;
     case "red":
-      redCount++;
+      redBlocked.push({
+        pattern: pattern.replace(/^Bash\(|\)$/g, ""),
+        reason: data.reason,
+        count: data.totalCount,
+      });
       break;
     default:
       unclassified++;
@@ -574,9 +633,11 @@ for (const [pattern, data] of patternGroups) {
 }
 
 green.sort((a, b) => b.count - a.count);
+redBlocked.sort((a, b) => b.count - a.count);
 
 const output = {
   green,
+  redExamples: redBlocked.slice(0, 5),
   yellowFootnote: yellowNames.length > 0
     ? `Also frequently used: ${yellowNames.join(", ")} (not classified as safe to auto-allow but may be worth reviewing)`
     : null,
@@ -586,8 +647,9 @@ const output = {
     belowThreshold,
     unclassified,
     yellowSkipped: yellowCount,
-    redBlocked: redCount,
+    redBlocked: redBlocked.length,
     patternsReturned: green.length,
+    greenRawCount,
     sessionsScanned: sessionsScanned.size,
     filesScanned,
     allowPatternsLoaded: allowPatterns.length,

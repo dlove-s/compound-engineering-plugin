@@ -12,7 +12,6 @@
     {
       "name": "compound-engineering",
       "description": "AI-powered development tools that get smarter with every use. Make each unit of engineering work easier than the last.",
-      "version": "2.42.0",
       "author": {
         "name": "Kieran Klaassen",
         "url": "https://github.com/kieranklaassen",
@@ -33,7 +32,6 @@
     {
       "name": "coding-tutor",
       "description": "Personalized coding tutorials that build on your existing knowledge and use your actual codebase for examples. Includes spaced repetition quizzes to reinforce learning. Includes 3 commands and 1 skill.",
-      "version": "1.2.1",
       "author": {
         "name": "Nityesh Agarwal"
       },

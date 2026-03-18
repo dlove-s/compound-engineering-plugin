@@ -198,20 +198,14 @@ export async function syncReleaseMetadata(options: SyncOptions = {}): Promise<Me
 
   for (const plugin of marketplaceClaude.plugins) {
     if (plugin.name === "compound-engineering") {
-      if (plugin.version !== expectedCompoundVersion) {
-        plugin.version = expectedCompoundVersion
-        changed = true
-      }
       if (plugin.description !== compoundMarketplaceDescription) {
         plugin.description = compoundMarketplaceDescription
         changed = true
       }
     }
-
-    if (plugin.name === "coding-tutor" && plugin.version !== expectedCodingTutorVersion) {
-      plugin.version = expectedCodingTutorVersion
-      changed = true
-    }
+    // Plugin versions are not synced in marketplace.json -- the canonical
+    // version lives in each plugin's own plugin.json. Duplicating versions
+    // here creates drift that release-please can't maintain.
   }
 
   updates.push({ path: marketplaceClaudePath, changed })

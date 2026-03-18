@@ -650,7 +650,7 @@ Use this checklist when adding a new target provider:
 ### Documentation
 - [ ] Create `docs/specs/{target}.md` with format specification
 - [ ] Update `README.md` with target in list and usage examples
-- [ ] Do not hand-add a release entry; release automation owns canonical changelog updates
+- [ ] Do not hand-add release notes; release automation owns GitHub release notes and release-owned versions
 
 ### Version Bumping
 - [ ] Use a conventional `feat:` or `fix:` title so release automation can infer the right bump
@@ -687,6 +687,6 @@ Use this checklist when adding a new target provider:
 ## Related Files
 
 - `plugins/compound-engineering/.claude-plugin/plugin.json` — Version and component counts
-- `CHANGELOG.md` — Recent additions and patterns
+- `CHANGELOG.md` — Pointer to canonical GitHub release history
 - `README.md` — Usage examples for all targets
 - `docs/solutions/plugin-versioning-requirements.md` — Checklist for releases

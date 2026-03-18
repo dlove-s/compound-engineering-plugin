@@ -1,5 +1,5 @@
 ---
-title: "Manual release-please migration for multi-component plugin and marketplace releases"
+title: "Manual release-please with GitHub Releases for multi-component plugin and marketplace releases"
 category: workflow
 date: 2026-03-17
 created: 2026-03-17
@@ -8,7 +8,7 @@ component: release-automation
 tags:
   - release-please
   - semantic-release
-  - changelog
+  - github-releases
   - marketplace
   - plugin-versioning
   - ci
@@ -16,7 +16,7 @@ tags:
   - release-process
 ---
 
-# Manual release-please migration for multi-component plugin and marketplace releases
+# Manual release-please with GitHub Releases for multi-component plugin and marketplace releases
 
 ## Problem
 
@@ -25,13 +25,13 @@ The repo had one automated release path for the npm CLI, but the actual release 
 - root-only `semantic-release`
 - a local maintainer workflow via `release-docs`
 - multiple version-bearing metadata files
-- inconsistent changelog ownership
+- inconsistent release-note ownership
 
-That made it hard to batch merges on `main`, hard for multiple maintainers to share release responsibility, and easy for changelogs, plugin manifests, marketplace metadata, and computed counts to drift out of sync.
+That made it hard to batch merges on `main`, hard for multiple maintainers to share release responsibility, and easy for release notes, plugin manifests, marketplace metadata, and computed counts to drift out of sync.
 
 ## Root Cause
 
-Release intent, component ownership, changelog ownership, and metadata synchronization were split across different systems:
+Release intent, component ownership, release-note ownership, and metadata synchronization were split across different systems:
 
 - PRs merged to `main` were too close to an actual publish event
 - only the root CLI had a real CI-owned release path
@@ -53,10 +53,30 @@ Key decisions:
   - `marketplace`
 - Keep release timing manual: the actual release happens when the generated release PR is merged.
 - Keep release PR maintenance automatic on pushes to `main`.
-- Keep one canonical root `CHANGELOG.md`.
-- Replace `release-docs` with repo-owned scripts for preview, metadata sync, validation, and root changelog rendering.
+- Use GitHub release PRs and GitHub Releases as the canonical release-notes surface for new releases.
+- Replace `release-docs` with repo-owned scripts for preview, metadata sync, and validation.
 - Keep PR title scopes optional; use file paths to determine affected components.
 - Make `AGENTS.md` canonical and reduce root `CLAUDE.md` to a compatibility shim.
+
+## Critical Constraint Discovered
+
+`release-please` does not allow package changelog paths that traverse upward with `..`.
+
+The failed first live run exposed this directly:
+
+- `release-please failed: illegal pathing characters in path: plugins/compound-engineering/../../CHANGELOG.md`
+
+That means a multi-component repo cannot force subpackage release entries back into one shared root changelog file using `changelog-path` values like:
+
+- `../../CHANGELOG.md`
+- `../CHANGELOG.md`
+
+The practical fix was:
+
+- set `skip-changelog: true` for all components in `.github/release-please-config.json`
+- treat GitHub Releases as the canonical release-notes surface
+- reduce `CHANGELOG.md` to a simple pointer file
+- add repo validation to catch illegal upward changelog paths before merge
 
 ## Resulting Release Process
 
@@ -68,6 +88,7 @@ After the migration:
 4. Maintainers can inspect the standing release PR or run the manual preview flow.
 5. The actual release happens only when the generated release PR is merged.
 6. npm publish runs only when the `cli` component is part of that release.
+7. Component-specific release notes are published via GitHub releases such as `cli-vX.Y.Z` and `compound-engineering-vX.Y.Z`.
 
 ## Component Rules
 
@@ -117,6 +138,17 @@ This keeps titles simple while still letting the release system decide the corre
 - They use the preview/release override path instead of making fake commits
 - The release still goes through the same CI-owned process
 
+## Release Notes Model
+
+- Pending release state is visible in one standing release PR.
+- Published release history is canonical in GitHub Releases.
+- Component identity is carried by component-specific tags such as:
+  - `cli-vX.Y.Z`
+  - `compound-engineering-vX.Y.Z`
+  - `coding-tutor-vX.Y.Z`
+  - `marketplace-vX.Y.Z`
+- Root `CHANGELOG.md` is only a pointer to GitHub Releases and is not the canonical source for new releases.
+
 ## Key Files
 
 - `.github/release-please-config.json`
@@ -128,7 +160,6 @@ This keeps titles simple while still letting the release system decide the corre
 - `src/release/metadata.ts`
 - `scripts/release/preview.ts`
 - `scripts/release/sync-metadata.ts`
-- `scripts/release/render-root-changelog.ts`
 - `scripts/release/validate.ts`
 - `AGENTS.md`
 - `CLAUDE.md`
@@ -138,7 +169,8 @@ This keeps titles simple while still letting the release system decide the corre
 - Keep release authority in CI only.
 - Do not reintroduce local maintainer-only release flows or hand-managed version bumps.
 - Keep `AGENTS.md` canonical. If a tool still needs `CLAUDE.md`, use it only as a compatibility shim.
-- Preserve one canonical root `CHANGELOG.md`.
+- Do not try to force multi-component release notes back into one committed changelog file if the tool does not support it natively.
+- Validate `.github/release-please-config.json` in CI so unsupported changelog-path values fail before the workflow reaches GitHub Actions.
 - Run `bun run release:validate` whenever plugin inventories, release-owned descriptions, or marketplace entries may have changed.
 - Prefer maintained CI actions over custom validation when a generic concern does not need repo-specific logic.
 
@@ -155,7 +187,7 @@ After merging release-system changes to `main`:
 
 - Verify exactly one standing release PR is created or updated.
 - Confirm ordinary merges to `main` do not publish npm directly.
-- Inspect the release PR for correct component selection, versions, metadata updates, and root changelog behavior.
+- Inspect the release PR for correct component selection, versions, and metadata updates.
 
 Before merging a generated release PR:
 
@@ -167,7 +199,7 @@ After merging a generated release PR:
 
 - Confirm npm publish runs only when `cli` is part of the release.
 - Confirm no recursive follow-up release PR appears containing only generated churn.
-- Confirm root `CHANGELOG.md` and release-owned metadata match the released components.
+- Confirm the expected component GitHub releases were created and that release-owned metadata matches the released components.
 
 ## Related Docs
 

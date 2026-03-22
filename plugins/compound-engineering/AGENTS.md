@@ -133,6 +133,14 @@ grep -E '^description:' skills/*/SKILL.md
 - **New skill:** Create `skills/<name>/SKILL.md` with required YAML frontmatter (`name`, `description`). Reference files go in `skills/<name>/references/`. Add the skill to the appropriate category table in `README.md` and update the skill count.
 - **New agent:** Create `agents/<category>/<name>.md` with frontmatter. Categories: `review`, `research`, `design`, `docs`, `workflow`. Add the agent to `README.md` and update the agent count.
 
+## Upstream-Sourced Skills
+
+Some skills are exact copies from external upstream repositories, vendored locally so the plugin is self-contained. Do not add local modifications -- sync from upstream instead.
+
+| Skill | Upstream |
+|-------|----------|
+| `agent-browser` | `github.com/vercel-labs/agent-browser` (`skills/agent-browser/SKILL.md`) |
+
 ## Beta Skills
 
 Beta skills use a `-beta` suffix and `disable-model-invocation: true` to prevent accidental auto-triggering. See `docs/solutions/skill-design/beta-skills-framework.md` for naming, validation, and promotion rules.

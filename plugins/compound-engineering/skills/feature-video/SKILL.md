@@ -118,12 +118,19 @@ Estimated duration: ~[X] seconds
 
 ### 4. Record the Walkthrough
 
-Generate a unique run ID (e.g., timestamp) and create per-run output directories. This prevents stale screenshots from prior runs being spliced into the new video:
+Generate a unique run ID (e.g., timestamp) and create per-run output directories. This prevents stale screenshots from prior runs being spliced into the new video.
+
+**Important:** Shell variables do not persist across separate code blocks. After generating the run ID, substitute the concrete value into all subsequent commands in this workflow. For example, if the timestamp is `1711234567`, use that literal value in all paths below -- do not rely on `[RUN_ID]` expanding in later blocks.
 
 ```bash
-RUN_ID=$(date +%s)
-mkdir -p .context/compound-engineering/feature-video/$RUN_ID/screenshots
-mkdir -p .context/compound-engineering/feature-video/$RUN_ID/videos
+date +%s
+```
+
+Use the output as RUN_ID. Create the directories with the concrete value:
+
+```bash
+mkdir -p .context/compound-engineering/feature-video/[RUN_ID]/screenshots
+mkdir -p .context/compound-engineering/feature-video/[RUN_ID]/videos
 ```
 
 Execute the planned flow, capturing each step with agent-browser. Number screenshots sequentially for correct frame ordering:
@@ -131,36 +138,36 @@ Execute the planned flow, capturing each step with agent-browser. Number screens
 ```bash
 agent-browser open "[base-url]/[start-route]"
 agent-browser wait 2000
-agent-browser screenshot .context/compound-engineering/feature-video/$RUN_ID/screenshots/01-start.png
+agent-browser screenshot .context/compound-engineering/feature-video/[RUN_ID]/screenshots/01-start.png
 ```
 
 ```bash
 agent-browser snapshot -i
 agent-browser click @e1
 agent-browser wait 1000
-agent-browser screenshot .context/compound-engineering/feature-video/$RUN_ID/screenshots/02-navigate.png
+agent-browser screenshot .context/compound-engineering/feature-video/[RUN_ID]/screenshots/02-navigate.png
 ```
 
 ```bash
 agent-browser snapshot -i
 agent-browser click @e2
 agent-browser wait 1000
-agent-browser screenshot .context/compound-engineering/feature-video/$RUN_ID/screenshots/03-feature.png
+agent-browser screenshot .context/compound-engineering/feature-video/[RUN_ID]/screenshots/03-feature.png
 ```
 
 ```bash
 agent-browser wait 2000
-agent-browser screenshot .context/compound-engineering/feature-video/$RUN_ID/screenshots/04-result.png
+agent-browser screenshot .context/compound-engineering/feature-video/[RUN_ID]/screenshots/04-result.png
 ```
 
 ### 5. Create Video
 
-Stitch screenshots into an MP4 using the same `$RUN_ID` from Step 4:
+Stitch screenshots into an MP4 using the same `[RUN_ID]` from Step 4:
 
 ```bash
-ffmpeg -y -framerate 0.5 -pattern_type glob -i ".context/compound-engineering/feature-video/$RUN_ID/screenshots/*.png" \
+ffmpeg -y -framerate 0.5 -pattern_type glob -i ".context/compound-engineering/feature-video/[RUN_ID]/screenshots/*.png" \
   -c:v libx264 -pix_fmt yuv420p -vf "scale=1280:-2" \
-  ".context/compound-engineering/feature-video/$RUN_ID/videos/feature-demo.mp4"
+  ".context/compound-engineering/feature-video/[RUN_ID]/videos/feature-demo.mp4"
 ```
 
 Notes:
@@ -233,7 +240,7 @@ Store this value as `SAVED_TEXTAREA`. If non-empty, it will be restored after ex
 Upload the video via the hidden file input:
 
 ```bash
-agent-browser upload '#fc-new_comment_field' .context/compound-engineering/feature-video/$RUN_ID/videos/feature-demo.mp4
+agent-browser upload '#fc-new_comment_field' .context/compound-engineering/feature-video/[RUN_ID]/videos/feature-demo.mp4
 ```
 
 Wait for GitHub to process the upload (typically 3-5 seconds), then read the textarea value:
@@ -249,11 +256,13 @@ agent-browser eval "document.getElementById('new_comment_field').value"
 2. If still on the PR page, wait an additional 5 seconds and re-read the textarea (GitHub processing can be slow).
 3. If validation still fails after retry, report the failure and the local video path so the user can upload manually.
 
-Restore the original textarea content (or clear if it was empty):
+Restore the original textarea content (or clear if it was empty). When restoring, JSON-encode the saved text to safely handle apostrophes, newlines, and other special characters:
 
 ```bash
-agent-browser eval "const ta = document.getElementById('new_comment_field'); ta.value = '[SAVED_TEXTAREA]'; ta.dispatchEvent(new Event('input', { bubbles: true }))"
+agent-browser eval "const ta = document.getElementById('new_comment_field'); ta.value = JSON.parse('[SAVED_TEXTAREA_JSON_ENCODED]'); ta.dispatchEvent(new Event('input', { bubbles: true }))"
 ```
+
+To prepare the value: take the SAVED_TEXTAREA string, JSON-encode it (e.g., `JSON.stringify(value)` produces `"text with 'quotes' and\nnewlines"`), then embed that JSON string literal in the eval. If SAVED_TEXTAREA was empty, pass `""` instead.
 
 ### 7. Update PR Description
 
@@ -281,10 +290,10 @@ gh pr edit [number] --body "[updated body with demo section]"
 
 ### 8. Cleanup
 
-Ask the user before removing temporary files. If confirmed, clean up scratch space:
+Ask the user before removing temporary files. If confirmed, clean up only the current run's scratch directory (other runs may still be in progress or awaiting upload):
 
 ```bash
-rm -r .context/compound-engineering/feature-video
+rm -r .context/compound-engineering/feature-video/[RUN_ID]
 ```
 
 Present a completion summary:

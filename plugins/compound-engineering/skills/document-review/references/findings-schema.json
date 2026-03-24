@@ -20,8 +20,6 @@
           "section",
           "why_it_matters",
           "autofix_class",
-          "owner",
-          "requires_verification",
           "confidence",
           "evidence"
         ],
@@ -46,17 +44,8 @@
           },
           "autofix_class": {
             "type": "string",
-            "enum": ["safe_auto", "gated_auto", "manual", "advisory"],
-            "description": "How this issue should be handled. safe_auto = local deterministic fix (terminology, formatting, cross-reference). gated_auto = fix changes document meaning. manual = strategic question requiring user judgment. advisory = informational only."
-          },
-          "owner": {
-            "type": "string",
-            "enum": ["review-fixer", "downstream-resolver", "human", "release"],
-            "description": "Who should own the next action for this finding"
-          },
-          "requires_verification": {
-            "type": "boolean",
-            "description": "Whether the fix needs re-review to ensure it didn't introduce new issues"
+            "enum": ["auto", "present"],
+            "description": "How this issue should be handled. auto = local deterministic fix the orchestrator can apply without asking (terminology, formatting, cross-references). present = requires user judgment."
           },
           "suggested_fix": {
             "type": ["string", "null"],
@@ -102,16 +91,8 @@
       "P3": "Minor improvement. User's discretion."
     },
     "autofix_classes": {
-      "safe_auto": "Local, deterministic document fix: terminology consistency, formatting, cross-reference correction.",
-      "gated_auto": "Fix exists but changes document meaning, scope, or decisions -- needs approval.",
-      "manual": "Strategic question requiring user judgment -- becomes a decision for the author.",
-      "advisory": "Informational finding -- surface in report only, no action expected."
-    },
-    "owners": {
-      "review-fixer": "The orchestrator can apply this fix automatically.",
-      "downstream-resolver": "This should be resolved in the next workflow stage.",
-      "human": "A person must make a judgment call.",
-      "release": "Operational or rollout follow-up."
+      "auto": "Local, deterministic document fix: terminology consistency, formatting, cross-reference correction. Must be unambiguous and not change the document's meaning.",
+      "present": "Requires user judgment -- strategic questions, tradeoffs, meaning-changing fixes, or informational findings."
     }
   }
 }

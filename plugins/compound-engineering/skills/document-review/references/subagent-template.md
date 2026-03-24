@@ -23,13 +23,9 @@ Rules:
 - Every finding MUST include at least one evidence item -- a direct quote from the document.
 - You are operationally read-only. Analyze the document and produce findings. Do not edit the document, create files, or make changes. You may use non-mutating tools (file reads, glob, grep, git log) to gather context about the codebase when evaluating feasibility or existing patterns.
 - Set `autofix_class` conservatively:
-  - `safe_auto`: Only for local, deterministic fixes -- terminology corrections, formatting fixes, cross-reference repairs. The fix must be unambiguous and not change the document's meaning.
-  - `gated_auto`: A concrete fix exists but it changes the document's meaning, scope, or decisions. Needs author approval.
-  - `manual`: Strategic question or tradeoff requiring human judgment. Frame as a question, not a directive.
-  - `advisory`: Informational -- surface in report only.
-- Set `owner` to the default next actor: `review-fixer` for safe_auto, `human` for manual, `downstream-resolver` for issues to address in the next workflow stage.
-- Set `requires_verification` to true when the fix could introduce new inconsistencies (e.g., renaming a term that appears in multiple sections).
-- `suggested_fix` is optional. Only include it when the fix is obvious and correct. For manual/advisory findings, frame as a question instead.
+  - `auto`: Only for local, deterministic fixes -- terminology corrections, formatting fixes, cross-reference repairs. The fix must be unambiguous and not change the document's meaning.
+  - `present`: Everything else -- strategic questions, tradeoffs, meaning-changing fixes, informational findings.
+- `suggested_fix` is optional. Only include it when the fix is obvious and correct. For `present` findings, frame as a question instead.
 - If you find no issues, return an empty findings array. Still populate residual_risks and deferred_questions if applicable.
 - Use your suppress conditions. Do not flag issues that belong to other personas.
 </output-contract>

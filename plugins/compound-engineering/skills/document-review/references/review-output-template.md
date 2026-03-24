@@ -17,33 +17,33 @@ Use this **exact format** when presenting synthesized review findings. Findings 
 
 ### Auto-fixes Applied
 
-- Standardized "pipeline"/"workflow" terminology to "pipeline" throughout (coherence, safe_auto)
-- Fixed cross-reference: Section 4 referenced "Section 3.2" which is actually "Section 3.1" (coherence, safe_auto)
+- Standardized "pipeline"/"workflow" terminology to "pipeline" throughout (coherence, auto)
+- Fixed cross-reference: Section 4 referenced "Section 3.2" which is actually "Section 3.1" (coherence, auto)
 
 ### P0 -- Must Fix
 
 | # | Section | Issue | Reviewer | Confidence | Route |
 |---|---------|-------|----------|------------|-------|
-| 1 | Requirements Trace | Goal states "offline support" but technical approach assumes persistent connectivity | coherence | 0.92 | `manual -> human` |
+| 1 | Requirements Trace | Goal states "offline support" but technical approach assumes persistent connectivity | coherence | 0.92 | `present` |
 
 ### P1 -- Should Fix
 
 | # | Section | Issue | Reviewer | Confidence | Route |
 |---|---------|-------|----------|------------|-------|
-| 2 | Implementation Unit 3 | Plan proposes custom auth when codebase already uses Devise | feasibility | 0.85 | `manual -> human` |
-| 3 | Scope Boundaries | 8 of 12 units build admin infrastructure; only 2 touch stated goal | scope-guardian | 0.80 | `manual -> human` |
+| 2 | Implementation Unit 3 | Plan proposes custom auth when codebase already uses Devise | feasibility | 0.85 | `present` |
+| 3 | Scope Boundaries | 8 of 12 units build admin infrastructure; only 2 touch stated goal | scope-guardian | 0.80 | `present` |
 
 ### P2 -- Consider Fixing
 
 | # | Section | Issue | Reviewer | Confidence | Route |
 |---|---------|-------|----------|------------|-------|
-| 4 | API Design | Public webhook endpoint has no rate limiting mentioned | security-lens | 0.75 | `gated_auto -> human` |
+| 4 | API Design | Public webhook endpoint has no rate limiting mentioned | security-lens | 0.75 | `present` |
 
 ### P3 -- Minor
 
 | # | Section | Issue | Reviewer | Confidence | Route |
 |---|---------|-------|----------|------------|-------|
-| 5 | Overview | "Service" used to mean both microservice and business class | coherence | 0.65 | `safe_auto -> review-fixer` |
+| 5 | Overview | "Service" used to mean both microservice and business class | coherence | 0.65 | `auto` |
 
 ### Residual Concerns
 
@@ -71,7 +71,7 @@ Use this **exact format** when presenting synthesized review findings. Findings 
 
 ## Section Rules
 
-- **Auto-fixes Applied**: List fixes that were applied automatically (safe_auto class). Omit section if none.
+- **Auto-fixes Applied**: List fixes that were applied automatically (auto class). Omit section if none.
 - **P0-P3 sections**: Only include sections that have findings. Omit empty severity levels.
 - **Residual Concerns**: Findings below confidence threshold that were promoted by cross-persona corroboration, plus unpromoted residual risks. Omit if none.
 - **Deferred Questions**: Questions for later workflow stages. Omit if none.

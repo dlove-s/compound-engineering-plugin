@@ -127,7 +127,7 @@ Scan the residual concerns (findings suppressed in 3.2) for:
 
 When personas disagree on the same section:
 - Create a **combined finding** presenting both perspectives
-- Set `autofix_class: manual`, `owner: human`
+- Set `autofix_class: present`
 - Frame as a tradeoff, not a verdict
 
 Specific conflict patterns:
@@ -137,16 +137,10 @@ Specific conflict patterns:
 
 ### 3.6 Route by Autofix Class
 
-The schema defines 4 autofix classes. The orchestrator routes as **2 buckets**:
-
 | Autofix Class | Route |
 |---------------|-------|
-| `safe_auto` | Apply automatically |
-| `gated_auto` | Present to user |
-| `manual` | Present to user |
-| `advisory` | Present to user |
-
-Personas classify precisely using all 4 classes. The orchestrator collapses `gated_auto`, `manual`, and `advisory` into a single "present to user" bucket because the distinction is blurry for documents -- all three require user judgment.
+| `auto` | Apply automatically -- local deterministic fix (terminology, formatting, cross-references) |
+| `present` | Present to user for judgment |
 
 ### 3.7 Sort
 
@@ -156,7 +150,7 @@ Sort findings for presentation: P0 -> P1 -> P2 -> P3, then by confidence (descen
 
 ### Apply Auto-fixes
 
-Apply all `safe_auto` findings to the document in a **single pass**:
+Apply all `auto` findings to the document in a **single pass**:
 - Edit the document inline using the platform's edit tool
 - Track what was changed for the "Auto-fixes Applied" section
 - Do not ask for approval -- these are unambiguously correct (terminology fixes, formatting, cross-references)

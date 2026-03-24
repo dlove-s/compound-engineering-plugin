@@ -81,7 +81,7 @@ The core rule: **skip workflow prompts, keep only truly necessary content prompt
 - When autopilot mode skips, downgrades, or best-effort-skips a material step, inform the user briefly and continue. Do not block on the prompt.
 - Skills must write durable outputs when applicable and return control without chaining into the next step.
 
-Skills with autopilot mode: `ce:brainstorm`, `ce:plan`, `deepen-plan`, `ce:work`, `ce:work-beta`, `test-browser`, `feature-video`. Document behavioral changes in a `## Autopilot Mode` section within the skill's SKILL.md and describe how the skill handles the marker/manifest contract when relevant.
+Skills with autopilot mode: `ce:brainstorm`, `ce:plan`, `deepen-plan`, `ce:work`, `ce:work-beta`, `ce:review`, `ce:review-beta`, `test-browser`, `feature-video`. Document behavioral changes in a `## Autopilot Mode` section within the skill's SKILL.md and describe how the skill handles the marker/manifest contract when relevant.
 
 ## Skill Compliance Checklist
 

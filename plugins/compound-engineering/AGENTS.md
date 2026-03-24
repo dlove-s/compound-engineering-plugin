@@ -68,6 +68,7 @@ The runtime contract is:
 - `slfg` is a deprecated wrapper that routes to `lfg` with swarm mode enabled
 - downstream skills detect autopilot from an explicit marker plus manifest path, not by guessing from "called from lfg/slfg"
 - swarm selection for implementation should come from explicit user intent first, then `compound-engineering.local.md` frontmatter `implementation_mode: standard | swarm`; if the setting is missing, assume `standard`
+- execution skills must honor the active manifest's `implementation_mode` during autopilot instead of requiring a second handoff-only swarm token
 - marker format:
   - `[ce-autopilot manifest=.context/compound-engineering/autopilot/<run-id>/session.json] :: <normal input>`
 - manifest directory:

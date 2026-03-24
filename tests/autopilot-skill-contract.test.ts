@@ -66,9 +66,13 @@ describe("autopilot skill contract", () => {
     expect(work).toContain("`Engineer > Designer > Product Manager`")
     expect(work).toContain("`Local Leverage`")
     expect(work).toContain("execution discoveries")
+    expect(work).toContain("Treat `manifest.implementation_mode=swarm` as the explicit swarm opt-in")
+    expect(work).toContain("active autopilot manifest sets `implementation_mode=swarm`")
     expect(work).toContain('if [ -n "$(git status --porcelain)" ]; then')
     expect(work).toContain("Only pull before branching when the worktree is clean")
 
+    expect(workBeta).toContain("Treat `manifest.implementation_mode=swarm` as the explicit swarm opt-in")
+    expect(workBeta).toContain("active autopilot manifest sets `implementation_mode=swarm`")
     expect(workBeta).toContain('if [ -n "$(git status --porcelain)" ]; then')
     expect(workBeta).toContain("Only pull before branching when the worktree is clean")
   })
@@ -117,6 +121,7 @@ describe("autopilot skill contract", () => {
 
     expect(agents).toContain("`lfg` is the only top-level autopilot entrypoint")
     expect(agents).toContain("[ce-autopilot manifest=.context/compound-engineering/autopilot/<run-id>/session.json] ::")
+    expect(agents).toContain("execution skills must honor the active manifest's `implementation_mode` during autopilot")
 
     expect(readme).toContain("Deprecated compatibility wrapper that routes to `/lfg` with swarm mode enabled")
     expect(readme).toContain("resumes from the first unmet workflow gate")

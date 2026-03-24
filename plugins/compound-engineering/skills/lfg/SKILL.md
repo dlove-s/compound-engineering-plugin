@@ -142,6 +142,8 @@ Late-stage rule:
 5. If the recomputed first unmet gate is `implementation`, run:
    - `/ce:work [ce-autopilot manifest=.context/compound-engineering/autopilot/<run-id>/session.json] :: <plan-path-from-artifacts.plan_doc>`
 
+   `ce:work` must honor the active manifest's `implementation_mode` when deciding between standard execution and swarm mode. Do not require a second swarm-specific handoff token here.
+
    GATE: Verify that implementation work was performed -- files were created or modified beyond the plan. Do NOT proceed if no code changes were made.
 
 6. If the recomputed first unmet gate is `review`, run `/ce:review [ce-autopilot manifest=.context/compound-engineering/autopilot/<run-id>/session.json] :: current` -- catch issues before they ship

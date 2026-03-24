@@ -24,6 +24,7 @@ When that marker is present:
 - Read the manifest path from the marker
 - Validate that the manifest describes an active autopilot run
 - Use the manifest's artifacts and gate state as part of execution context
+- Treat `manifest.implementation_mode=swarm` as the explicit swarm opt-in for this run's implementation gate
 
 Then use the same safe defaults described below and avoid workflow prompts.
 
@@ -445,7 +446,7 @@ Specific behavior:
 
 For genuinely large plans where agents need to communicate with each other, challenge approaches, or coordinate across 10+ tasks with persistent specialized roles, use agent team capabilities if available (e.g., Agent Teams in Claude Code, multi-agent workflows in Codex).
 
-**Agent teams are typically experimental and require opt-in.** Do not attempt to use agent teams unless the user explicitly requests swarm mode or agent teams, and the platform supports it.
+**Agent teams are typically experimental and require opt-in.** Do not attempt to use agent teams unless the user explicitly requests swarm mode or agent teams, or the active autopilot manifest sets `implementation_mode=swarm`, and the platform supports it.
 
 ### When to Use Agent Teams vs Subagents
 
@@ -454,7 +455,7 @@ For genuinely large plans where agents need to communicate with each other, chal
 | Agents need to discuss and challenge each other's approaches | Each task is independent — only the result matters |
 | Persistent specialized roles (e.g., dedicated tester running continuously) | Workers report back and finish |
 | 10+ tasks with complex cross-cutting coordination | 3-8 tasks with clear dependency chains |
-| User explicitly requests "swarm mode" or "agent teams" | Default for most plans |
+| User explicitly requests "swarm mode" or "agent teams", or the active autopilot manifest sets `implementation_mode=swarm` | Default for most plans |
 
 Most plans should use subagent dispatch from standard mode. Agent teams add significant token cost and coordination overhead — use them when the inter-agent communication genuinely improves the outcome.
 

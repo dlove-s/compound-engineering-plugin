@@ -33,7 +33,7 @@ Specific behavior:
 - Default to headless mode. Do not ask whether to watch the browser.
 - If `agent-browser` cannot be installed or the dev server is not running, note the skip briefly and return control to the caller.
 - If a flow requires human verification (OAuth, email, payments, SMS, external service confirmation), mark it as manual verification required, note it briefly, and continue testing other routes.
-- If a page test fails, capture the failure, create a todo file in `todos/` for follow-up, note it briefly, and continue testing the remaining routes.
+- If a page test fails, capture the failure, create a todo file in `.context/compound-engineering/todos/` for follow-up, note it briefly, and continue testing the remaining routes.
 - Briefly inform the user when a material verification step was skipped or degraded. Do not block on the prompt.
 
 ## Setup
@@ -239,7 +239,7 @@ When a test fails:
 
 2. **Decide how to proceed:**
 
-   - In autopilot mode, create a pending todo file in `todos/` immediately for the failure, note it briefly, and continue testing the remaining routes. Do not leave the failure only in the summary or in an ephemeral finding format.
+   - In autopilot mode, use `file-todos` when available to create a pending todo for the failure immediately, note it briefly, and continue testing the remaining routes. If `file-todos` is unavailable, create the pending todo file directly in `.context/compound-engineering/todos/`. Do not leave the failure only in the summary or in an ephemeral finding format.
    - Otherwise, ask the user how to proceed:
 
    ```
@@ -255,10 +255,10 @@ When a test fails:
    ```
 
 3. **If "Fix now":** investigate, propose a fix, apply, re-run the failing test
-4. **If "Create todo":** create `{id}-pending-p1-browser-test-{description}.md` in `todos/`, continue
+4. **If "Create todo":** use `file-todos` when available to create a pending p1 todo with description `browser-test-{description}`. Otherwise create `{id}-pending-p1-browser-test-{description}.md` directly in `.context/compound-engineering/todos/`, continue
 5. **If "Skip":** log as skipped, continue
 
-For autopilot failures, use `file-todos` when available. Otherwise create the todo directly in `todos/` using the standard naming and structure.
+For autopilot failures, use `file-todos` when available. Otherwise create the todo directly in `.context/compound-engineering/todos/` using the standard naming and structure.
 
 ### 10. Test Summary
 

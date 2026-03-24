@@ -48,6 +48,16 @@ Specific phase behavior:
 - **Phases 1.3 and 2:** Content questions to clarify vague or ambiguous requirements are still permitted. The user is present and getting requirements right is more valuable than speed.
 - **Phase 4 handoff is skipped.** Do not present handoff options or invoke `/ce:plan`. Write the requirements document (if warranted) and return control to the calling workflow.
 
+## Durable Output Safety
+
+This skill may create or update durable requirements documents in `docs/brainstorms/`.
+
+- **In autopilot mode (`lfg`/`slfg`)** — inherit the current branch/worktree context and continue without branch prompts.
+- **In standalone use on a clean worktree** — proceed normally.
+- **In standalone use on a dirty worktree** — continue only when the existing uncommitted changes clearly belong to the same brainstorm topic. If they appear unrelated, or you are not confident, ask before writing or updating a durable document.
+- **Being in a worktree does not by itself prove the task context is correct** — use the same clean-vs-dirty and related-vs-unrelated judgment there.
+- **Do not create or switch branches from this skill** — branch/worktree orchestration belongs to the calling workflow or to `ce:work` when execution begins.
+
 ## Feature Description
 
 <feature_description> #$ARGUMENTS </feature_description>

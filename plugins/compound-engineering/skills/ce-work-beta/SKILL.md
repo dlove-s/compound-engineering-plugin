@@ -21,8 +21,8 @@ Specific behavior:
 
 - Do not ask for generic approval to proceed.
 - Respect explicit user instructions about branch strategy, such as "use `main`", "create a new branch", or "use a worktree".
-- If already on a non-default branch, continue there and note it briefly.
-- If on the default branch and the user did not explicitly authorize staying there, create a feature branch automatically. Prefer a worktree only when the user explicitly asked for it or the environment clearly calls for it.
+- In autopilot mode, if already on a non-default branch, continue there and note it briefly.
+- In autopilot mode, if on the default branch and the user did not explicitly authorize staying there, create a feature branch automatically. Prefer a worktree only when the user explicitly asked for it or the environment clearly calls for it.
 - Never commit directly to the default branch without explicit user permission.
 - Stop only for true blockers: contradictory requirements, missing credentials, broken environment/setup, or another consent boundary that cannot be inferred safely.
 - When using a fallback or skipping a non-critical step, inform the user briefly and continue.
@@ -63,15 +63,39 @@ Specific behavior:
    fi
    ```
 
-   Choose the branch strategy automatically using this precedence:
+   Choose the branch strategy using this precedence:
 
    - **Explicit user instruction wins** — if the user asked to use `main`, create a new branch, or use a worktree, do that.
-   - **Already on a feature branch** — continue on `current_branch` and note that choice briefly.
-   - **On the default branch without explicit permission to stay there** — create a feature branch automatically.
-   - **Use a worktree** only when the user explicitly asked for it or the environment clearly calls for isolated parallel development.
-   - **Continue on the default branch** only when the user explicitly authorized it.
+   - **Autopilot mode (`lfg`/`slfg`)** — if already on a non-default branch, continue on `current_branch` and note that choice briefly. If on the default branch without explicit permission to stay there, create a feature branch automatically.
+   - **Standalone `/ce:work-beta` on a non-default branch** — do not silently reuse the branch. Ask whether to continue on `current_branch`, create a new feature branch, or use a worktree instead.
+   - **Standalone `/ce:work-beta` on the default branch without explicit permission to stay there** — ask whether to create a feature branch or use a worktree. Continuing on the default branch still requires explicit authorization.
+   - **Use a worktree** when the user explicitly asked for it or the environment clearly calls for isolated parallel development.
 
    Never commit directly to the default branch without explicit permission.
+
+   For standalone `/ce:work-beta`, use the platform's blocking question tool when available. Otherwise, present numbered options and wait. Suggested prompts:
+
+   If already on a non-default branch:
+
+   ```
+   Branch safety check: you're on `[current_branch]`.
+
+   1. Continue on `[current_branch]`
+   2. Create a new feature branch (recommended)
+   3. Use a worktree instead
+   4. Cancel
+   ```
+
+   If on the default branch:
+
+   ```
+   Branch safety check: you're on the default branch `[default_branch]`.
+
+   1. Create a new feature branch (recommended)
+   2. Use a worktree instead
+   3. Continue on `[default_branch]` (only if explicitly requested)
+   4. Cancel
+   ```
 
    When creating a branch automatically:
    ```bash

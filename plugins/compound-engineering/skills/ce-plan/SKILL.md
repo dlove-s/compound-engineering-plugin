@@ -50,6 +50,16 @@ Every plan should contain:
 
 A plan is ready when an implementer can start confidently without needing the plan to write the code for them.
 
+## Durable Output Safety
+
+This skill writes durable plan artifacts in `docs/plans/`.
+
+- **In autopilot mode (`lfg`/`slfg`)** — inherit the current branch/worktree context and continue without branch prompts.
+- **In standalone use on a clean worktree** — proceed normally.
+- **In standalone use on a dirty worktree** — continue only when the existing uncommitted changes clearly belong to the same plan topic. If they appear unrelated, or you are not confident, ask before writing or updating a durable plan file.
+- **Being in a worktree does not by itself prove the task context is correct** — use the same clean-vs-dirty and related-vs-unrelated judgment there.
+- **Do not create or switch branches from this skill** — branch/worktree orchestration belongs to the calling workflow or to `ce:work` when execution begins.
+
 ## Workflow
 
 ### Phase 0: Resume, Source, and Scope

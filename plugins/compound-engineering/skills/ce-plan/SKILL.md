@@ -22,9 +22,12 @@ Ask one question at a time. Prefer a concise single-select choice when natural o
 
 <feature_description> #$ARGUMENTS </feature_description>
 
-**If the feature description above is empty, ask the user:** "What would you like to plan? Please describe the feature, bug fix, or improvement you have in mind."
+**If the feature description above is empty:**
+- First, look for a recent relevant requirements document in `docs/brainstorms/`.
+- If one exists, use it as the source of truth and do not ask the user to repeat the description.
+- Ask the user "What would you like to plan? Please describe the feature, bug fix, or improvement you have in mind." only if no relevant requirements document exists.
 
-Do not proceed until you have a clear planning input.
+Do not proceed until you have a clear planning input, either from the user or from a relevant requirements document.
 
 ## Core Principles
 
@@ -69,6 +72,8 @@ Before asking planning questions, search `docs/brainstorms/` for files matching 
 - The topic semantically matches the feature description
 - It was created within the last 30 days (use judgment to override if the document is clearly still relevant or clearly stale)
 - It appears to cover the same user problem or scope
+
+If the feature description is empty, this search still runs before asking the user anything. This is how upstream workflows such as `lfg` and `slfg` hand off from brainstorm to planning without a duplicate prompt.
 
 When evaluating candidates, skip any requirements document that already has a completed plan referencing it (a plan in `docs/plans/` with `origin:` pointing to the doc and `status: completed`).
 

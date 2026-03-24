@@ -9,6 +9,8 @@ Assess the task, choose the right execution path, and get it done. Not every tas
 
 ## Phase 0: Assess and Route
 
+If `$ARGUMENTS` is empty, do not assess complexity yet. Route to **Full pipeline** immediately and start with `ce:brainstorm` so brainstorm can ask the user for the missing feature description. Do not ask the user yourself and do not guess a route from an empty prompt.
+
 Read the feature description and choose the cheapest execution path that will handle it well.
 
 **Bias toward under-routing.** Running too little ceremony and having the user ask for more is far cheaper than running a full pipeline for a one-line fix. When the boundary between direct and lightweight is unclear, prefer direct. When the boundary between lightweight and full pipeline is unclear, prefer full pipeline -- it has internal short-circuits that right-size themselves.
@@ -28,7 +30,10 @@ The fix is obvious and self-contained. No planning or multi-agent review needed.
 
 Before changing files, preserve the same branch/worktree safety as `ce:work` Phase 1: choose the right branch first, and never commit directly to the default branch without explicit user permission.
 
-Make the change, verify it works (typecheck, lint, or test if applicable), then preserve the same wrap-up contract as `ce:work` Phase 4: commit it, push it, and create or update the PR before outputting `<promise>DONE</promise>`.
+Make the change, verify it works (typecheck, lint, or test if applicable), then preserve the same applicable wrap-up contract as `ce:work` Phase 4 before outputting `<promise>DONE</promise>`:
+- commit it, push it, and create or update the PR
+- add a `## Post-Deploy Monitoring & Validation` section to the PR description
+- if the change affects browser UI, capture and upload screenshots and include the image URLs in the PR description
 
 ---
 
@@ -38,7 +43,10 @@ The task is clear and bounded -- requirements and expected behavior are already 
 
 Before changing files, preserve the same branch/worktree safety as `ce:work` Phase 1: choose the right branch first, and never commit directly to the default branch without explicit user permission.
 
-Do the work directly. Verify it works (typecheck, lint, or test if applicable), give it a quick self-review for obvious issues, then preserve the same wrap-up contract as `ce:work` Phase 4: commit it, push it, and create or update the PR before outputting `<promise>DONE</promise>`.
+Do the work directly. Verify it works (typecheck, lint, or test if applicable), give it a quick self-review for obvious issues, then preserve the same applicable wrap-up contract as `ce:work` Phase 4 before outputting `<promise>DONE</promise>`:
+- commit it, push it, and create or update the PR
+- add a `## Post-Deploy Monitoring & Validation` section to the PR description
+- if the change affects browser UI, capture and upload screenshots and include the image URLs in the PR description
 
 ---
 
@@ -55,6 +63,8 @@ Skills run in pipeline mode: skip workflow prompts (handoff menus, "what next?" 
 2. **Optional:** If the `ralph-loop` skill is available, run `/ralph-loop:ralph-loop "finish all slash commands" --completion-promise "DONE"` to iterate autonomously through the remaining steps. Brainstorm ran first because it may need user interaction; everything from here on is autonomous and benefits from ralph's fresh-context iteration. If not available or it fails, continue to step 3.
 
 3. `/ce:plan $ARGUMENTS`
+
+   If brainstorm collected the feature description because `$ARGUMENTS` was empty, do not ask the user for the same description again. Let `ce:plan` use the requirements document created by brainstorm as the source of truth.
 
    GATE: Verify that `ce:plan` produced a plan file in `docs/plans/`. If no plan file was created, run `/ce:plan $ARGUMENTS` again. Do NOT proceed until a written plan exists.
 

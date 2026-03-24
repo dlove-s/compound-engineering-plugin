@@ -1,5 +1,5 @@
 ---
-title: "LFG/SLFG pipeline orchestration and the Pipeline Mode pattern"
+title: "LFG/SLFG pipeline orchestration and the Autopilot Mode pattern"
 category: skill-design
 date: 2026-03-22
 severity: medium
@@ -7,7 +7,7 @@ component: plugins/compound-engineering/skills
 tags:
   - lfg
   - slfg
-  - pipeline-mode
+  - autopilot-mode
   - orchestration
   - ce-brainstorm
   - ce-plan
@@ -15,7 +15,7 @@ tags:
   - autonomous-workflow
 ---
 
-# LFG/SLFG Pipeline Orchestration and the Pipeline Mode Pattern
+# LFG/SLFG Pipeline Orchestration and the Autopilot Mode Pattern
 
 ## Problem
 
@@ -52,24 +52,24 @@ Three behaviors in `ce:brainstorm` prevented simple insertion:
 
 3. **No awareness of pipeline context.** `ce:brainstorm` did not detect `disable-model-invocation` frontmatter (the signal that a skill is running inside an automated pipeline), so it could not adjust its behavior.
 
-### Existing pipeline-aware precedent
+### Existing autopilot-aware precedent
 
-`ce:plan` already had a "Pipeline mode" section (line 555 of its SKILL.md) that detects `disable-model-invocation` context and skips interactive prompts. This established the pattern but it was undocumented as a general convention.
+`ce:plan` already had an "Autopilot Mode" section (line 555 of its SKILL.md) that skips workflow prompts when invoked from an automated caller context. This established the pattern but it was undocumented as a general convention.
 
 ## Root Cause
 
 Two gaps:
 
-1. `ce:brainstorm` lacked pipeline mode awareness -- it did not know how to behave when invoked from an automated pipeline.
+1. `ce:brainstorm` lacked autopilot mode awareness -- it did not know how to behave when invoked from an automated pipeline.
 2. The brainstorm short-circuit (Phase 0.2) was not a genuine skip in any context -- even for clear requirements it continued to interactive dialogue.
 
 ## Solution
 
 Three-part fix across four files.
 
-### 1. Added Pipeline Mode to ce:brainstorm
+### 1. Added Autopilot Mode to ce:brainstorm
 
-Added a `## Pipeline Mode` section that defines behavior when invoked from LFG/SLFG/disable-model-invocation context:
+Added a `## Autopilot Mode` section that defines behavior when invoked from LFG/SLFG/autopilot caller context:
 
 - **Phase 0.1:** If a relevant requirements doc already exists in `docs/brainstorms/`, check staleness first: skip the doc if a completed plan in `docs/plans/` already references it (via `origin:` + `status: completed`), or if its scope meaningfully diverges from the current `$ARGUMENTS`. If the doc is still relevant, check for `Resolve Before Planning` items -- if blocking questions remain, resume the brainstorm to resolve them rather than returning control (otherwise the pipeline dead-ends). If the doc is plan-ready, return control immediately.
 - **Empty feature description:** Ask the user. This is the one interaction that cannot be skipped -- brainstorm owns "what do you want to build?"
@@ -94,13 +94,13 @@ Within the Full Pipeline path, `/ce:brainstorm $ARGUMENTS` runs as step 1 (befor
 
 In slfg specifically: brainstorm runs in the Brainstorm Phase without swarm mode -- only `ce:work` uses swarm.
 
-### 3. Documented Pipeline Mode Convention in AGENTS.md
+### 3. Documented Autopilot Mode Convention in AGENTS.md
 
-Added a `## Pipeline Mode Convention` section to `plugins/compound-engineering/AGENTS.md` that documents the pattern for future skill authors:
+Added a `## Autopilot Mode Convention` section to `plugins/compound-engineering/AGENTS.md` that documents the pattern for future skill authors:
 
-- When to add pipeline mode (skills with interactive handoff menus or post-generation AskUserQuestion calls)
-- What pipeline mode means (skip prompts, skip handoffs, write outputs, return control)
-- How context is detected (`disable-model-invocation` frontmatter)
+- When to add autopilot mode (skills with interactive handoff menus or post-generation AskUserQuestion calls)
+- What autopilot mode means (skip prompts, skip handoffs, write outputs, return control)
+- How caller-controlled automated workflows trigger it
 
 ## Key Design Decisions
 
@@ -112,13 +112,13 @@ Within the Full Pipeline path, brainstorm is always invoked rather than duplicat
 
 Direct and Lightweight are execution shortcuts, not lifecycle shortcuts. They skip brainstorm/plan/review when those would add ceremony, but they still preserve the branch/worktree safety, commit, push, and PR-creation responsibilities needed to keep `/lfg` and `/slfg` true to their "to PR" contract.
 
-### Pipeline mode is skill-internal
+### Autopilot mode is skill-internal
 
 The skill itself detects pipeline context and adjusts behavior. The calling pipeline does not override the skill's behavior or pass special flags. This preserves the skill's autonomy and keeps the pipeline definition simple -- it is just a list of skills to invoke.
 
 ### Empty arguments mean brainstorm asks
 
-Brainstorm owns the question "what do you want to build?" If the user invokes `/lfg` without arguments, brainstorm is the skill that asks for clarification -- not `ce:plan`. This is the one AskUserQuestion that pipeline mode does NOT skip.
+Brainstorm owns the question "what do you want to build?" If the user invokes `/lfg` without arguments, brainstorm is the skill that asks for clarification -- not `ce:plan`. This is the one AskUserQuestion that autopilot mode does NOT skip.
 
 ### Step ordering matters for resolve-todo
 
@@ -134,14 +134,14 @@ Not all projects have a browser-based UI to record. CLI tools, plugins, librarie
 
 ## Prevention
 
-- When adding new skills that have interactive handoff menus or post-generation options, add a `## Pipeline Mode` section if the skill might be invoked from lfg/slfg. The AGENTS.md Pipeline Mode Convention section documents this expectation.
-- Skills with pipeline mode as of this writing: `ce:brainstorm`, `ce:plan`.
+- When adding new skills that have interactive handoff menus or post-generation options, add a `## Autopilot Mode` section if the skill might be invoked from lfg/slfg. The AGENTS.md Autopilot Mode Convention section documents this expectation.
+- Skills with autopilot mode as of this writing: `ce:brainstorm`, `ce:plan`.
 - Test pipeline integration by invoking the full `/lfg` flow, not just the individual skill. A skill that works perfectly in isolation can still block a pipeline.
 
 ## Related Files
 
-- `plugins/compound-engineering/skills/ce-brainstorm/SKILL.md` -- Pipeline Mode section added
+- `plugins/compound-engineering/skills/ce-brainstorm/SKILL.md` -- Autopilot Mode section added
 - `plugins/compound-engineering/skills/lfg/SKILL.md` -- brainstorm step inserted
 - `plugins/compound-engineering/skills/slfg/SKILL.md` -- brainstorm step inserted
-- `plugins/compound-engineering/AGENTS.md` -- Pipeline Mode Convention section added
-- `plugins/compound-engineering/skills/ce-plan/SKILL.md` -- pipeline mode promoted from one-liner to proper section with workflow-vs-content distinction
+- `plugins/compound-engineering/AGENTS.md` -- Autopilot Mode Convention section added
+- `plugins/compound-engineering/skills/ce-plan/SKILL.md` -- autopilot mode promoted from one-liner to proper section with workflow-vs-content distinction

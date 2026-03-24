@@ -34,7 +34,7 @@ This skill does not implement code. It explores, clarifies, and documents decisi
 
 - **Keep outputs concise** - Prefer short sections, brief bullets, and only enough detail to support the next decision.
 
-## Pipeline Mode
+## Autopilot Mode
 
 When invoked from an automated workflow (LFG, SLFG, or any `disable-model-invocation` context), distinguish between two kinds of prompts:
 
@@ -64,7 +64,7 @@ Do not proceed until you have a feature description from the user.
 
 If the user references an existing brainstorm topic or document, or there is an obvious recent matching `*-requirements.md` file in `docs/brainstorms/`:
 - Read the document
-- **In pipeline mode:** skip the document (proceed to Phase 0.2 to reassess whether brainstorming is needed for the current `$ARGUMENTS`) if a plan in `docs/plans/` has `origin:` pointing to this doc and `status: completed` (already fully consumed), or its scope meaningfully diverges from the current feature description (`$ARGUMENTS`). If the doc is still relevant (no completed plan referencing it and scope matches), check for `Resolve Before Planning` items. If none exist, note the existing document and return control immediately (see Pipeline Mode above). If blocking questions remain, resume the brainstorm to resolve them (proceed to Phase 1.3) rather than returning control. Do not ask the user whether to resume or start fresh.
+- **In autopilot mode:** skip the document (proceed to Phase 0.2 to reassess whether brainstorming is needed for the current `$ARGUMENTS`) if a plan in `docs/plans/` has `origin:` pointing to this doc and `status: completed` (already fully consumed), or its scope meaningfully diverges from the current feature description (`$ARGUMENTS`). If the doc is still relevant (no completed plan referencing it and scope matches), check for `Resolve Before Planning` items. If none exist, note the existing document and return control immediately (see Autopilot Mode above). If blocking questions remain, resume the brainstorm to resolve them (proceed to Phase 1.3) rather than returning control. Do not ask the user whether to resume or start fresh.
 - **Otherwise:** Confirm with the user before resuming: "Found an existing requirements doc for [topic]. Should I continue from this, or start fresh?"
 - If resuming, summarize the current state briefly, continue from its existing decisions and outstanding questions, and update the existing document instead of creating a duplicate
 
@@ -77,7 +77,7 @@ If the user references an existing brainstorm topic or document, or there is an 
 - Constrained, well-defined scope
 
 **If requirements are already clear:**
-- **In pipeline mode:** skip brainstorm entirely and return control to the calling workflow (see Pipeline Mode above). Do not proceed to Phase 1.3 or Phase 3.
+- **In autopilot mode:** skip brainstorm entirely and return control to the calling workflow (see Autopilot Mode above). Do not proceed to Phase 1.3 or Phase 3.
 - **Otherwise:** Keep the interaction brief. Confirm understanding and present concise next-step options rather than forcing a long brainstorm. Only write a short requirements document when a durable handoff to planning or later review would be valuable. Skip Phase 1.1 and 1.2 entirely — go straight to Phase 1.3 or Phase 3.
 
 #### 0.3 Assess Scope
@@ -263,7 +263,7 @@ If a document contains outstanding questions:
 
 #### 4.1 Present Next-Step Options
 
-**In pipeline mode:** skip Phase 4 entirely. Write the requirements document (if warranted by the brainstorm) and return control to the calling workflow. Do not present handoff options or invoke `/ce:plan`.
+**In autopilot mode:** skip Phase 4 entirely. Write the requirements document (if warranted by the brainstorm) and return control to the calling workflow. Do not present handoff options or invoke `/ce:plan`.
 
 **Otherwise:** Present next steps using the platform's blocking question tool when available (see Interaction Rules). Otherwise present numbered options in chat and end the turn.
 

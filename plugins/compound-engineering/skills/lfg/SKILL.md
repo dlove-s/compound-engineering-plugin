@@ -1,6 +1,6 @@
 ---
 name: lfg
-description: Right-sized engineering pipeline from idea to PR -- assesses task complexity and runs the appropriate amount of ceremony, from direct edits for trivial fixes to full brainstorm-plan-implement-review-test for complex features.
+description: Right-sized engineering autopilot from idea to PR -- assesses task complexity and runs the appropriate amount of ceremony, from direct edits for trivial fixes to the full brainstorm-plan-implement-review-test pipeline for complex features.
 argument-hint: "[feature description]"
 disable-model-invocation: true
 ---
@@ -54,11 +54,11 @@ Do the work directly. Verify it works (typecheck, lint, or test if applicable), 
 
 The task has enough scope, ambiguity, or risk that structured planning prevents wasted work. This is the default when the task is not clearly trivial or simple.
 
-Skills run in pipeline mode: skip workflow prompts (handoff menus, "what next?" options) but still ask content questions when requirements or scope are unclear.
+Skills run in autopilot mode: skip workflow prompts (handoff menus, "what next?" options) but still ask content questions when requirements or scope are unclear.
 
 1. `/ce:brainstorm $ARGUMENTS`
 
-   Brainstorm runs in pipeline mode: it assesses whether requirements exploration is needed and either skips (if requirements are already clear) or runs brainstorm with content questions as needed and writes a requirements document. It will not present handoff options or invoke `/ce:plan` -- control returns here.
+   Brainstorm runs in autopilot mode: it assesses whether requirements exploration is needed and either skips (if requirements are already clear) or runs brainstorm with content questions as needed and writes a requirements document. It will not present handoff options or invoke `/ce:plan` -- control returns here.
 
 2. **Optional:** If the `ralph-loop` skill is available, run `/ralph-loop:ralph-loop "finish all slash commands" --completion-promise "DONE"` to iterate autonomously through the remaining steps. Brainstorm ran first because it may need user interaction; everything from here on is autonomous and benefits from ralph's fresh-context iteration. If not available or it fails, continue to step 3.
 

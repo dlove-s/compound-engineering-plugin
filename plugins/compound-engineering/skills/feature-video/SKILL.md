@@ -17,7 +17,7 @@ Record browser interactions demonstrating a feature, stitch screenshots into an 
 - Git repository on a feature branch (PR optional -- skill can create a draft or record-only)
 - One-time GitHub browser auth (see Step 6 auth check)
 
-## Pipeline Mode
+## Autopilot Mode
 
 When invoked from LFG, SLFG, or another caller-controlled automated workflow, treat feature video as best effort and prefer continuing the pipeline over blocking on interaction.
 
@@ -55,7 +55,7 @@ gh pr view --json number -q '.number'
 
 If no PR exists for the current branch:
 
-- In pipeline mode, try creating a draft PR automatically and continue if successful. If draft PR creation fails, note the skip briefly and return control to the caller.
+- In autopilot mode, try creating a draft PR automatically and continue if successful. If draft PR creation fails, note the skip briefly and return control to the caller.
 - Otherwise, ask the user how to proceed. **Use the platform's blocking question tool** (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini):
 
 ```
@@ -94,13 +94,13 @@ command -v gh
 
 If any tool is missing:
 
-- In pipeline mode, note the skip briefly and return control to the caller.
+- In autopilot mode, note the skip briefly and return control to the caller.
 - Otherwise, stop and report which tools need to be installed:
 - `ffmpeg`: `brew install ffmpeg` (macOS) or equivalent
 - `agent-browser`: load the `agent-browser` skill for installation instructions
 - `gh`: `brew install gh` (macOS) or see https://cli.github.com
 
-Do not proceed to Step 2 until all tools are available unless pipeline mode already returned control.
+Do not proceed to Step 2 until all tools are available unless autopilot mode already returned control.
 
 ### 2. Gather Feature Context
 
@@ -132,7 +132,7 @@ Before recording, create a shot list:
 4. **Edge cases**: Error states, validation, etc. (if applicable)
 5. **Success state**: Completed action/result
 
-In pipeline mode, create the proposed flow automatically and proceed to recording without asking for confirmation.
+In autopilot mode, create the proposed flow automatically and proceed to recording without asking for confirmation.
 
 Otherwise, present the proposed flow to the user for confirmation before recording.
 
@@ -243,7 +243,7 @@ agent-browser close
 agent-browser --engine chrome --headed --session-name github open https://github.com/login
 ```
 
-In pipeline mode, if manual login is required because the saved session is missing or expired, note the skip briefly and return control to the caller.
+In autopilot mode, if manual login is required because the saved session is missing or expired, note the skip briefly and return control to the caller.
 
 Otherwise, the user must log in manually in the browser window (handles 2FA, SSO, OAuth -- any login method). **Use the platform's blocking question tool** (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). Otherwise, present the message and wait for the user's reply before proceeding:
 

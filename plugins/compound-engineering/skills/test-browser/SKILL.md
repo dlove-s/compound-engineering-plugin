@@ -24,7 +24,7 @@ Platform-specific hints:
 - `agent-browser` CLI installed (see Setup below)
 - Git repository with changes to test
 
-## Pipeline Mode
+## Autopilot Mode
 
 When invoked from LFG, SLFG, or another caller-controlled automated workflow, prefer progress over interaction and use safe defaults.
 
@@ -62,12 +62,12 @@ command -v agent-browser >/dev/null 2>&1 && echo "Ready" || (echo "Installing...
 
 If installation fails:
 
-- In pipeline mode, note the skip briefly and return control to the caller.
+- In autopilot mode, note the skip briefly and return control to the caller.
 - Otherwise, inform the user and stop.
 
 ### 2. Choose Browser Mode
 
-In pipeline mode, default to headless and note that choice briefly.
+In autopilot mode, default to headless and note that choice briefly.
 
 Otherwise, ask the user whether to run headed or headless (using the platform's question tool — e.g., `AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini — or present options and wait for a reply):
 
@@ -152,7 +152,7 @@ agent-browser snapshot -i
 
 If the server is not running:
 
-- In pipeline mode, note the skip briefly and return control to the caller.
+- In autopilot mode, note the skip briefly and return control to the caller.
 - Otherwise, inform the user:
 
 ```
@@ -213,7 +213,7 @@ Pause for human input when testing touches flows that require external interacti
 | SMS | "Verify you received the SMS code" |
 | External APIs | "Confirm the [service] integration is working" |
 
-In pipeline mode, mark the route as requiring manual verification, note it briefly, and continue.
+In autopilot mode, mark the route as requiring manual verification, note it briefly, and continue.
 
 Otherwise, ask the user (using the platform's question tool, or present numbered options and wait):
 
@@ -239,7 +239,7 @@ When a test fails:
 
 2. **Decide how to proceed:**
 
-   - In pipeline mode, create a todo or equivalent finding for the failure, note it briefly, and continue testing the remaining routes.
+   - In autopilot mode, create a todo or equivalent finding for the failure, note it briefly, and continue testing the remaining routes.
    - Otherwise, ask the user how to proceed:
 
    ```

@@ -26,7 +26,7 @@ Use the platform's question tool when available. When asking the user a question
 
 Ask one question at a time. Prefer a concise single-select choice when natural options exist.
 
-## Pipeline Mode
+## Autopilot Mode
 
 When invoked from `lfg`, `slfg`, or another caller-controlled automated workflow, skip workflow prompts and return control to the caller.
 
@@ -44,7 +44,7 @@ Specific behavior:
 
 If the plan path above is empty:
 1. Check `docs/plans/` for recent files
-2. In pipeline mode, stop and report that the caller must provide the plan path. Otherwise, ask the user which plan to deepen using the platform's blocking question tool when available (see Interaction Method). Otherwise, present numbered options in chat and wait for the user's reply before proceeding
+2. In autopilot mode, stop and report that the caller must provide the plan path. Otherwise, ask the user which plan to deepen using the platform's blocking question tool when available (see Interaction Method). Otherwise, present numbered options in chat and wait for the user's reply before proceeding
 
 Do not proceed until you have a valid plan file path.
 
@@ -96,7 +96,7 @@ Use this default:
 If the plan already appears sufficiently grounded:
 - Say so briefly
 - Recommend moving to `/ce:work` or the `document-review` skill
-- In pipeline mode, return control immediately after the brief note
+- In autopilot mode, return control immediately after the brief note
 - If the user explicitly asked to deepen anyway, continue with a light pass and deepen at most 1-2 sections
 
 ### Phase 1: Parse the Current `ce:plan` Structure
@@ -399,7 +399,7 @@ If artifact-backed mode was used and the user did not ask to inspect the scratch
 
 ## Post-Enhancement Options
 
-In pipeline mode, skip this section entirely. After updating the plan:
+In autopilot mode, skip this section entirely. After updating the plan:
 - if substantive changes were made, briefly summarize which sections were strengthened and return control
 - if no substantive changes were warranted, briefly note that the plan already appears sufficiently grounded and return control
 

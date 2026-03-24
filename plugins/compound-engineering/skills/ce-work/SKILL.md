@@ -12,7 +12,7 @@ Execute a work plan efficiently while maintaining quality and finishing features
 
 This command takes a work document (plan, specification, or todo file) and executes it systematically. The focus is on **shipping complete features** by understanding requirements quickly, following existing patterns, and maintaining quality throughout.
 
-## Pipeline Mode
+## Autopilot Mode
 
 When invoked from LFG, SLFG, or another caller-controlled automated workflow, use the same safe defaults described below and avoid workflow prompts.
 

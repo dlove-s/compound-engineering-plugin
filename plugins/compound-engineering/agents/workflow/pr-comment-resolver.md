@@ -1,6 +1,6 @@
 ---
 name: pr-comment-resolver
-description: "Evaluates and resolves a single PR review thread -- assesses validity, implements fixes, and returns a structured summary with reply text. Spawned by the pr-resolve-feedback skill."
+description: "Evaluates and resolves a single PR review thread -- assesses validity, implements fixes, and returns a structured summary with reply text. Spawned by the resolve-pr-feedback skill."
 color: blue
 model: inherit
 ---

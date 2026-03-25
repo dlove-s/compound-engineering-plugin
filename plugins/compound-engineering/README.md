@@ -44,7 +44,7 @@ The primary entry points for engineering work, invoked as slash commands:
 | `/feature-video` | Record video walkthroughs and add to PR description |
 | `/reproduce-bug` | Reproduce bugs using logs and console |
 | `/report-bug-ce` | Report a bug in the compound-engineering plugin |
-| `/pr-resolve-feedback` | Resolve PR review feedback in parallel |
+| `/resolve-pr-feedback` | Resolve PR review feedback in parallel |
 | `/sync` | Sync Claude Code config across machines |
 | `/test-browser` | Run browser tests on PR-affected pages |
 | `/test-xcode` | Build and test iOS apps on simulator |

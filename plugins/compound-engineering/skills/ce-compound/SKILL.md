@@ -122,7 +122,11 @@ Launch these subagents IN PARALLEL. Each returns text data to the orchestrator.
    - Identifies cross-references and links
    - Finds related GitHub issues
    - Flags any related learning or pattern docs that may now be stale, contradicted, or overly broad
-   - Returns: Links, relationships, and any refresh candidates
+   - **Assesses overlap** with the new doc being created across five dimensions: problem statement, root cause, solution approach, referenced files, and prevention rules. Score as:
+     - **High**: 4-5 dimensions match — essentially the same problem solved again
+     - **Moderate**: 2-3 dimensions match — same area but different angle or solution
+     - **Low**: 0-1 dimensions match — related but distinct
+   - Returns: Links, relationships, refresh candidates, and overlap assessment (score + which dimensions matched)
 
    **Search strategy (grep-first filtering for efficiency):**
 
@@ -153,10 +157,22 @@ Launch these subagents IN PARALLEL. Each returns text data to the orchestrator.
 The orchestrating agent (main conversation) performs these steps:
 
 1. Collect all text results from Phase 1 subagents
-2. Assemble complete markdown file from the collected pieces
-3. Validate YAML frontmatter against schema
-4. Create directory if needed: `mkdir -p docs/solutions/[category]/`
-5. Write the SINGLE final file: `docs/solutions/[category]/[filename].md`
+2. **Check the overlap assessment** from the Related Docs Finder before deciding what to write:
+
+   | Overlap | Action |
+   |---------|--------|
+   | **High** — existing doc covers the same problem, root cause, and solution | **Update the existing doc** with fresher context (new code examples, updated references, additional prevention tips) rather than creating a duplicate. The existing doc's path and structure stay the same. |
+   | **Moderate** — same problem area but different angle, root cause, or solution | **Create the new doc** normally. Flag the overlap for Phase 2.5 to recommend consolidation review. |
+   | **Low or none** | **Create the new doc** normally. |
+
+   The reason to update rather than create: two docs describing the same problem and solution will inevitably drift apart. The newer context is fresher and more trustworthy, so fold it into the existing doc rather than creating a second one that immediately needs consolidation.
+
+   When updating an existing doc, preserve its file path and frontmatter structure. Update the solution, code examples, prevention tips, and any stale references. Add a `last_updated: YYYY-MM-DD` field to the frontmatter. Do not change the title unless the problem framing has materially shifted.
+
+3. Assemble complete markdown file from the collected pieces
+4. Validate YAML frontmatter against schema
+5. Create directory if needed: `mkdir -p docs/solutions/[category]/`
+6. Write the file: either the updated existing doc or the new `docs/solutions/[category]/[filename].md`
 
 </sequential_tasks>
 
@@ -173,6 +189,7 @@ It makes sense to invoke `ce:compound-refresh` when one or more of these are tru
 3. The current work involved a refactor, migration, rename, or dependency upgrade that likely invalidated references in older docs
 4. A pattern doc now looks overly broad, outdated, or no longer supported by the refreshed reality
 5. The Related Docs Finder surfaced high-confidence refresh candidates in the same problem space
+6. The Related Docs Finder reported **moderate overlap** with an existing doc — there may be consolidation opportunities that benefit from a focused review
 
 It does **not** make sense to invoke `ce:compound-refresh` when:
 
@@ -259,7 +276,7 @@ re-run /compound in a fresh session.
 
 **No subagents are launched. No parallel tasks. One file written.**
 
-In compact-safe mode, only suggest `ce:compound-refresh` if there is an obvious narrow refresh target. Do not broaden into a large refresh sweep from a compact-safe session.
+In compact-safe mode, the overlap check is skipped (no Related Docs Finder subagent). This means compact-safe mode may create a doc that overlaps with an existing one. That is acceptable — `ce:compound-refresh` will catch it later. Only suggest `ce:compound-refresh` if there is an obvious narrow refresh target. Do not broaden into a large refresh sweep from a compact-safe session.
 
 ---
 
@@ -310,7 +327,8 @@ In compact-safe mode, only suggest `ce:compound-refresh` if there is an obvious 
 |----------|-----------|
 | Subagents write files like `context-analysis.md`, `solution-draft.md` | Subagents return text data; orchestrator writes one final file |
 | Research and assembly run in parallel | Research completes → then assembly runs |
-| Multiple files created during workflow | Single file: `docs/solutions/[category]/[filename].md` |
+| Multiple files created during workflow | One file written or updated: `docs/solutions/[category]/[filename].md` |
+| Creating a new doc when an existing doc covers the same problem | Check overlap assessment; update the existing doc when overlap is high |
 
 ## Success Output
 
@@ -342,6 +360,19 @@ What's next?
 3. Update other references
 4. View documentation
 5. Other
+```
+
+**Alternate output (when updating an existing doc due to high overlap):**
+
+```
+✓ Documentation updated (existing doc refreshed with current context)
+
+Overlap detected: docs/solutions/performance-issues/n-plus-one-queries.md
+  Matched dimensions: problem statement, root cause, solution, referenced files
+  Action: Updated existing doc with fresher code examples and prevention tips
+
+File updated:
+- docs/solutions/performance-issues/n-plus-one-queries.md (added last_updated: 2026-03-24)
 ```
 
 ## The Compounding Philosophy

@@ -690,7 +690,7 @@ describe("CLI", () => {
     expect(stdout).toContain("Synced to gemini")
     expect(stdout).not.toContain("cursor")
 
-    expect(await exists(path.join(tempHome, ".config", "opencode", "commands", "workflows:plan.md"))).toBe(true)
+    expect(await exists(path.join(tempHome, ".config", "opencode", "commands", "workflows", "plan.md"))).toBe(true)
     expect(await exists(path.join(tempHome, ".codex", "config.toml"))).toBe(true)
     expect(await exists(path.join(tempHome, ".codex", "prompts", "workflows-plan.md"))).toBe(true)
     expect(await exists(path.join(tempHome, ".codex", "skills", "workflows-plan", "SKILL.md"))).toBe(true)

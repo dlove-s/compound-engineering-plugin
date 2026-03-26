@@ -1,7 +1,6 @@
 ---
 name: onboarding
 description: "Generate or regenerate ONBOARDING.md to help new contributors understand a codebase. Use when the user asks to 'create onboarding docs', 'generate ONBOARDING.md', 'document this project for new developers', 'write onboarding documentation', 'vonboard', 'vonboarding', 'prepare this repo for a new contributor', 'refresh the onboarding doc', or 'update ONBOARDING.md'. Also use when someone needs to onboard a new team member and wants a written artifact, or when a codebase lacks onboarding documentation and the user wants to generate one."
-argument-hint: "[optional: focus area or scope hint]"
 ---
 
 # Generate Onboarding Document
@@ -20,12 +19,6 @@ This skill always regenerates the document from scratch. It does not read or dif
 4. **State what you can observe, not what you must infer** -- Do not fabricate design rationale or assess fragility. If the code doesn't reveal why a decision was made, don't guess.
 5. **Never include secrets** -- The onboarding document is committed to the repository. Never include API keys, tokens, passwords, connection strings with credentials, or any other secret values. Reference environment variable *names* (`STRIPE_SECRET_KEY`), never their *values*. If a `.env` file contains actual secrets, extract only the variable names.
 6. **Link, don't duplicate** -- When existing documentation covers a topic well, link to it inline rather than re-explaining.
-
-## Focus Hint
-
-<focus_hint> #$ARGUMENTS </focus_hint>
-
-If a focus hint is provided, use it to prioritize which parts of the codebase to examine more deeply. The document still covers all five sections, but depth can shift toward the focus area.
 
 ## Execution Flow
 

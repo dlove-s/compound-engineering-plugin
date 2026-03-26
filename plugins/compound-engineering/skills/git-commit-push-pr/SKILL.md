@@ -18,7 +18,10 @@ command git status
 command git diff HEAD
 command git branch --show-current
 command git log --oneline -10
+command git rev-parse --abbrev-ref origin/HEAD | sed 's@^origin/@@'
 ```
+
+The last command returns the repo's default branch name (e.g., `main`). If it fails, fall back to `main`.
 
 If there are no changes, report that and stop.
 
@@ -47,7 +50,7 @@ Interpret the result:
 
 ### Step 4: Branch, stage, and commit
 
-1. If on `main` or the repo's default branch, create a descriptive feature branch first (`command git checkout -b <branch-name>`). Derive the branch name from the change content.
+1. If on `main`, `master`, or the resolved default branch from Step 1, create a descriptive feature branch first (`command git checkout -b <branch-name>`). Derive the branch name from the change content.
 2. Before staging everything together, scan the changed files for naturally distinct concerns. If modified files clearly group into separate logical changes (e.g., a refactor in one set of files and a new feature in another), create separate commits for each group. Keep this lightweight -- group at the **file level only** (no `git add -p`), split only when obvious, and aim for two or three logical commits at most. If it's ambiguous, one commit is fine.
 3. Stage relevant files by name. Avoid `git add -A` or `git add .` to prevent accidentally including sensitive files.
 4. Commit following the conventions from Step 2. Use a heredoc for the message.
@@ -79,9 +82,9 @@ Use this fallback chain. Stop at the first that succeeds:
    Match the `owner/repo` from the PR URL against the fetch URLs. Use the matching remote as the base remote. If no remote matches, fall back to `origin`.
 2. **`origin/HEAD` symbolic ref:**
    ```bash
-   command git symbolic-ref --quiet --short refs/remotes/origin/HEAD
+   command git symbolic-ref --quiet --short refs/remotes/origin/HEAD | sed 's@^origin/@@'
    ```
-   Strip the `origin/` prefix from the result. Use `origin` as the base remote.
+   Use `origin` as the base remote.
 3. **GitHub default branch metadata:**
    ```bash
    command gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'

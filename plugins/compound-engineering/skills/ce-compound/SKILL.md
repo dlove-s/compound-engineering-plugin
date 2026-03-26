@@ -27,9 +27,9 @@ Before documenting, load these files as the durable contract for the workflow:
 
 @./references/schema.yaml
 
-`references/yaml-schema.md`
+@./references/yaml-schema.md
 
-`assets/resolution-template.md`
+@./assets/resolution-template.md
 
 If the rest of this skill ever drifts from the loaded files above, update the skill to match them or update the files and the skill together in the same change.
 

@@ -517,7 +517,7 @@ Read these before spawning the replacement subagent, and pass the relevant schem
    - A summary of the investigation evidence (what changed, what the current code does, why the old guidance is misleading)
    - The target path and category (same category as the old learning unless the category itself changed)
    - The relevant contents of the three support files listed above
-2. The subagent writes the new learning using the `ce:compound` support files as the source of truth: `references/schema.yaml` for frontmatter fields and enum values, `references/yaml-schema.md` for category mapping, and `assets/resolution-template.md` for section order. It should use dedicated file search and read tools if it needs additional context beyond what was passed.
+2. The subagent writes the new learning using the `ce:compound` support files as the source of truth: `../ce-compound/references/schema.yaml` for frontmatter fields and enum values, `../ce-compound/references/yaml-schema.md` for category mapping, and `../ce-compound/assets/resolution-template.md` for section order. It should use dedicated file search and read tools if it needs additional context beyond what was passed.
 3. After the subagent completes, the orchestrator deletes the old learning file. The new learning's frontmatter may include `supersedes: [old learning filename]` for traceability, but this is optional — the git history and commit message provide the same information.
 
 **When evidence is insufficient:**

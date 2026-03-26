@@ -97,6 +97,8 @@ What to avoid:
 - Use bold for emphasis sparingly
 - Keep paragraphs short -- 2-4 sentences
 
+**Section separators** -- Insert a horizontal rule (`---`) between each `##` section. These documents are dense and benefit from strong visual breaks when scanning.
+
 **Width constraint for code blocks -- 80 columns max.** Markdown code blocks render with `white-space: pre` and never wrap, so wide lines cause horizontal scrolling on GitHub, tablets, and narrow viewports. Tables are fine -- markdown renderers wrap them. Apply these rules to all content inside ``` fences:
 
 - **ASCII architecture diagrams**: Stack boxes vertically instead of laying them out horizontally. Never place more than 2 boxes on the same horizontal line, and keep each box label under 20 characters. This caps diagrams at ~60 chars wide.

@@ -31,6 +31,8 @@ If both fail, fall back to `main`.
 
 If there are no changes (nothing staged, nothing modified), report that and stop.
 
+If `git branch --show-current` returned an empty result, the repository is in detached HEAD state. Explain that a branch is required before committing if the user wants this work attached to a branch. Ask whether to create a feature branch now. Use the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). If no question tool is available, present the options and wait for the user's reply before proceeding. If the user chooses to create a branch, derive the name from the change content and switch to it before continuing. If the user declines, continue with the detached HEAD commit.
+
 If the current branch matches `main`, `master`, or the resolved default branch name, warn the user and ask whether to continue committing here or create a feature branch first. Use the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). If no question tool is available, present the options and wait for the user's reply before proceeding. If the user chooses to create a branch, derive the name from the change content and switch to it before continuing.
 
 ### Step 2: Determine commit message convention
@@ -73,4 +75,3 @@ EOF
 ### Step 5: Confirm
 
 Run `git status` after the commit to verify success. Report the commit hash(es) and subject line(s).
-

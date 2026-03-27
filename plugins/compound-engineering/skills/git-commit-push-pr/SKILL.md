@@ -100,7 +100,10 @@ Follow this priority order for commit messages *and* PR titles:
 
 ### Step 3: Check for existing PR
 
-If Step 1's `git branch --show-current` returned an empty result, the repository is in detached HEAD state -- skip PR detection and continue to Step 4.
+If Step 1's `git branch --show-current` returned an empty result, the repository is in detached HEAD state. Explain that a branch is required before committing and pushing. Ask whether to create a feature branch now. Use the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). If no question tool is available, present the options and wait for the user's reply.
+
+- If the user agrees, derive a descriptive branch name from the change content, create it with `git checkout -b <branch-name>`, then continue to Step 4.
+- If the user declines, stop.
 
 Otherwise, check for an existing open PR:
 
@@ -311,4 +314,3 @@ The new commits are already on the PR from the push in Step 5. Report the PR URL
 ### Step 8: Report
 
 Output the PR URL so the user can navigate to it directly.
-

@@ -11,20 +11,20 @@ Create a single, well-crafted git commit from the current working tree changes.
 
 ### Step 1: Gather context
 
-Run these commands to understand the current state. Use `command git` to bypass aliases and RTK proxies.
+Run these commands to understand the current state.
 
 ```bash
-command git status
-command git diff HEAD
-command git branch --show-current
-command git log --oneline -10
-command git rev-parse --abbrev-ref origin/HEAD
+git status
+git diff HEAD
+git branch --show-current
+git log --oneline -10
+git rev-parse --abbrev-ref origin/HEAD
 ```
 
 The last command returns the remote default branch (e.g., `origin/main`). Strip the `origin/` prefix to get the branch name. If the command fails or returns a bare `HEAD`, try:
 
 ```bash
-command gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
+gh repo view --json defaultBranchRef --jq '.defaultBranchRef.name'
 ```
 
 If both fail, fall back to `main`.
@@ -61,7 +61,7 @@ Write the commit message:
 Use a heredoc to preserve formatting:
 
 ```bash
-command git commit -m "$(cat <<'EOF'
+git commit -m "$(cat <<'EOF'
 type(scope): subject line here
 
 Optional body explaining why this change was made,
@@ -72,8 +72,5 @@ EOF
 
 ### Step 5: Confirm
 
-Run `command git status` after the commit to verify success. Report the commit hash(es) and subject line(s).
+Run `git status` after the commit to verify success. Report the commit hash(es) and subject line(s).
 
-## Important: Use `command git`
-
-Always invoke git as `command git` in shell commands. This bypasses shell aliases and tools like RTK (Rust Token Killer) that proxy git commands.

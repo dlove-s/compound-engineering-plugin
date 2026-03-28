@@ -30,7 +30,7 @@ Parse `$ARGUMENTS` for the following optional tokens. Strip each recognized toke
 
 All tokens are optional. Each one present means one less thing to infer. When absent, fall back to existing behavior for that stage.
 
-**Conflicting mode flags:** If multiple mode tokens appear in arguments (e.g., `mode:headless mode:autofix`), emit `Review failed. Reason: conflicting mode flags — <mode_a> and <mode_b> cannot be combined.` and stop. Do not dispatch agents.
+**Conflicting mode flags:** If multiple mode tokens appear in arguments, stop and do not dispatch agents. If `mode:headless` is one of the conflicting tokens, emit the headless error envelope: `Review failed (headless mode). Reason: conflicting mode flags — <mode_a> and <mode_b> cannot be combined.` Otherwise emit the generic form: `Review failed. Reason: conflicting mode flags — <mode_a> and <mode_b> cannot be combined.`
 
 ## Mode Detection
 
@@ -472,7 +472,7 @@ Advisory findings (report-only):
   Why: <why_it_matters>
 
 Pre-existing issues:
-[P2] File: <file:line> -- <title> (<reviewer>, confidence <N>)
+[P2][gated_auto -> downstream-resolver] File: <file:line> -- <title> (<reviewer>, confidence <N>)
   Why: <why_it_matters>
 
 Residual risks:
@@ -492,6 +492,11 @@ Deployment Notes:
 
 Testing gaps:
 - <gap>
+
+Coverage:
+- Suppressed: <N> findings below 0.60 confidence
+- Untracked files excluded: <file1>, <file2>
+- Failed reviewers: <reviewer>
 
 Review complete
 ```

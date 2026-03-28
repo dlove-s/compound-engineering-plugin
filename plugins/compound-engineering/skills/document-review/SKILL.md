@@ -12,11 +12,12 @@ Review requirements or plan documents through multi-persona analysis. Dispatches
 
 Check the skill arguments or caller context for `mode:headless`. If present, set **headless mode** for the rest of the workflow.
 
-**Headless mode** is designed for programmatic callers (other skills, pipelines) that want document-review to fix everything it can and return unresolved findings as text -- without interactive questions. In this mode:
+**Headless mode** changes the interaction model, not the classification boundaries. Document-review still applies the same judgment about what is deterministic vs. what needs verification. The only difference is how non-auto findings are delivered:
 - `auto` fixes are applied silently (same as interactive)
-- `batch_confirm` fixes are applied automatically (no approval prompt)
-- `present` findings are output as a text summary for the caller to handle
+- `batch_confirm` and `present` findings are returned as structured text for the caller to handle -- no AskUserQuestion prompts, no interactive approval
 - Phase 5 returns immediately with "Review complete" (no refine/complete question)
+
+The caller receives findings with their original classifications intact and decides what to do with each tier.
 
 Callers invoke headless mode by including `mode:headless` in the skill arguments, e.g.:
 ```
@@ -191,7 +192,7 @@ Apply all `auto` findings to the document in a **single pass**:
 
 If any `batch_confirm` findings exist:
 
-**Headless mode:** Apply all `batch_confirm` fixes in a single pass without prompting. These findings have one clear correct answer -- in a programmatic pipeline the caller trusts document-review's judgment on them. Track applied fixes for the summary.
+**Headless mode:** Do not prompt. Include `batch_confirm` findings in the structured text output alongside `present` findings, clearly marked with their classification so the caller can distinguish them. The caller decides whether to apply them.
 
 **Interactive mode:**
 
@@ -211,24 +212,28 @@ This turns N obvious-but-meaning-touching fixes into 1 interaction instead of N.
 
 ### Present Remaining Findings
 
-**Headless mode:** Do not use interactive question tools. Output the findings as a structured text summary the caller can parse and act on:
+**Headless mode:** Do not use interactive question tools. Output all non-auto findings as a structured text summary the caller can parse and act on:
 
 ```
 Document review complete (headless mode).
 
-Applied N auto-fixes and M batch-confirm fixes automatically.
+Applied N auto-fixes.
 
-Remaining findings requiring judgment (K total):
+Batch-confirm findings (clear fix, wording needs verification):
 
-[P0] Section: <section> — <title> (<reviewer>, confidence <N>)
+[P1][batch_confirm] Section: <section> — <title> (<reviewer>, confidence <N>)
+  Why: <why_it_matters>
+  Suggested fix: <suggested_fix>
+
+Present findings (requires judgment):
+
+[P0][present] Section: <section> — <title> (<reviewer>, confidence <N>)
   Why: <why_it_matters>
   Suggested fix: <suggested_fix or "none">
 
-[P1] Section: <section> — <title> (<reviewer>, confidence <N>)
+[P1][present] Section: <section> — <title> (<reviewer>, confidence <N>)
   Why: <why_it_matters>
   Suggested fix: <suggested_fix or "none">
-
-...
 
 Residual concerns:
 - <concern> (<source>)
@@ -237,7 +242,7 @@ Deferred questions:
 - <question> (<source>)
 ```
 
-Then proceed directly to Phase 5 (which returns immediately in headless mode).
+Omit any section with zero items. Then proceed directly to Phase 5 (which returns immediately in headless mode).
 
 **Interactive mode:**
 

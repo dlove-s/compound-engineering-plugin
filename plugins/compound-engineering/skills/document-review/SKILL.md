@@ -34,7 +34,7 @@ If `mode:headless` is not present, the skill runs in its default interactive mod
 
 **If no document is specified (interactive mode):** Ask which document to review, or find the most recent in `docs/brainstorms/` or `docs/plans/` using a file-search/glob tool (e.g., Glob in Claude Code).
 
-**If no document is specified (headless mode):** Auto-resolve by finding the most recent file in `docs/brainstorms/` or `docs/plans/`. If no document is found, output "No document found to review." and return "Review complete" without dispatching agents.
+**If no document is specified (headless mode):** Output "Headless mode requires a document path. Re-invoke with: Skill(\"compound-engineering:document-review\", \"<path> mode:headless\")" and return "Review complete" without dispatching agents.
 
 ### Classify Document Type
 

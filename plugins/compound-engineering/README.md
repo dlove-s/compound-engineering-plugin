@@ -104,6 +104,7 @@ Agents are specialized subagents invoked by skills — you typically don't call 
 | `agent-native-reviewer` | Verify features are agent-native (action + context parity) |
 | `api-contract-reviewer` | Detect breaking API contract changes |
 | `cli-agent-readiness-reviewer` | Evaluate CLI agent-friendliness against 7 core principles |
+| `cli-readiness-reviewer` | CLI agent-readiness persona for ce:review (conditional, structured JSON) |
 | `architecture-strategist` | Analyze architectural decisions and compliance |
 | `code-simplicity-reviewer` | Final pass for simplicity and minimalism |
 | `correctness-reviewer` | Logic errors, edge cases, state bugs |

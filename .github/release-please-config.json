@@ -30,7 +30,10 @@
         ".agents/",
         ".gemini/",
         ".cursor/",
-        ".windsurf/"
+        ".windsurf/",
+        ".claude-plugin/",
+        ".cursor-plugin/",
+        "plugins/"
       ],
       "extra-files": [
         {

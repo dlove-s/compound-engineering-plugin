@@ -179,7 +179,7 @@ describe("ce:work-beta codex delegation contract", () => {
     expect(content).toContain("<task>")
     expect(content).toContain("<constraints>")
     expect(content).toContain("<output_contract>")
-    expect(content).toContain("the orchestrator\nwill not re-run verification independently")
+    expect(content).toContain("the orchestrator will not re-run verification independently")
 
     // Result schema and execution loop
     expect(content).toContain("## Result Schema")

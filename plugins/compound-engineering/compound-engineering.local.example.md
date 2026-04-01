@@ -1,17 +1,10 @@
 ---
 # Codex Delegation Settings
-# Copy this file to .claude/compound-engineering.local.md in your project root.
-# All settings are optional — omit any you don't need.
+# Copy to .claude/compound-engineering.local.md in your project root.
+# All settings are optional. Invalid values fall through to defaults.
 
-# Enable Codex delegation for ce:work-beta (false = off, codex = on)
-# work_delegate: codex
-
-# One-time consent flag (set automatically after first consent prompt)
-# work_delegate_consent: true
-
-# Sandbox posture for codex exec (yolo = full access, full-auto = sandboxed)
-# work_delegate_sandbox: yolo
-
-# Delegation decision mode (auto = skill decides, ask = prompt each time)
-# work_delegate_decision: auto
+# work_delegate: codex          # codex | false (default: false)
+# work_delegate_consent: true   # true | false (default: false)
+# work_delegate_sandbox: yolo   # yolo | full-auto (default: yolo)
+# work_delegate_decision: auto  # auto | ask (default: auto)
 ---

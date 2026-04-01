@@ -42,12 +42,12 @@ After extracting tokens from arguments, resolve the delegation state using this 
 2. **local.md setting** -- Read `.claude/compound-engineering.local.md` and extract `work_delegate` from YAML frontmatter. Value `codex` activates delegation; `false` deactivates.
 3. **Hard default** -- `false` (delegation off)
 
-To read local.md: open the file, extract content between the opening and closing `---` delimiters (YAML frontmatter), and interpret the keys. If the file is missing, empty, or has malformed frontmatter, treat all settings as absent and fall through to hard defaults.
+To read local.md: open the file, extract content between the opening and closing `---` delimiters (YAML frontmatter), and interpret the keys. If the file is missing, empty, has malformed frontmatter, or any setting has an unrecognized value, fall through to the hard default for that setting.
 
 Also read from local.md when present:
-- `work_delegate_consent` -- `true` if the user has completed the one-time consent flow
-- `work_delegate_sandbox` -- `yolo` (default) or `full-auto` -- sandbox posture for codex exec
-- `work_delegate_decision` -- `auto` (default, skill decides and proceeds) or `ask` (present recommendation, wait for user choice before proceeding)
+- `work_delegate_consent` -- `true` or default `false`
+- `work_delegate_sandbox` -- `yolo` (default) or `full-auto`
+- `work_delegate_decision` -- `auto` (default) or `ask`
 
 Store the resolved state for downstream consumption:
 - `delegation_active` -- boolean, whether delegation mode is on

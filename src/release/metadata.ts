@@ -101,8 +101,9 @@ export async function countMcpServers(pluginRoot: string): Promise<number> {
   try {
     const manifest = await readJson<{ mcpServers?: Record<string, unknown> }>(mcpPath)
     return Object.keys(manifest.mcpServers ?? {}).length
-  } catch {
-    return 0
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return 0
+    throw err
   }
 }
 

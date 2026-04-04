@@ -151,9 +151,13 @@ function isDeprecatedCodexWorkflowAlias(name: string): boolean {
   return name.startsWith("workflows:")
 }
 
+const WORKFLOW_ALIAS_OVERRIDES: Record<string, string> = {
+  "workflows:review": "ce-code-review",
+}
+
 function toCanonicalWorkflowSkillName(name: string): string | null {
   if (!isDeprecatedCodexWorkflowAlias(name)) return null
-  return `ce-${name.slice("workflows:".length)}`
+  return WORKFLOW_ALIAS_OVERRIDES[name] ?? `ce-${name.slice("workflows:".length)}`
 }
 
 function shouldApplyCompoundWorkflowModel(plugin: ClaudePlugin): boolean {

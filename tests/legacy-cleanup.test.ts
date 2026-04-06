@@ -41,6 +41,10 @@ function agentContent(name: string, description: string): string {
   return `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\nBody\n`
 }
 
+function promptWrapperContent(skillName: string, description: string, body = "Body") {
+  return `---\ndescription: ${JSON.stringify(description)}\n---\n\nUse the $${skillName} skill for this command and follow its instructions.\n\n${body}\n`
+}
+
 describe("cleanupStaleSkillDirs", () => {
   test("removes known stale skill directories", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "cleanup-skills-"))
@@ -247,9 +251,27 @@ describe("cleanupStaleAgents", () => {
 describe("cleanupStalePrompts", () => {
   test("removes old workflow prompt wrappers", async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), "cleanup-prompts-"))
-    await createFile(path.join(root, "ce-plan.md"))
-    await createFile(path.join(root, "ce-review.md"))
-    await createFile(path.join(root, "ce-brainstorm.md"))
+    await createFile(
+      path.join(root, "ce-plan.md"),
+      promptWrapperContent(
+        "ce-plan",
+        await pluginDescription("plugins/compound-engineering/skills/ce-plan/SKILL.md"),
+      ),
+    )
+    await createFile(
+      path.join(root, "ce-review.md"),
+      promptWrapperContent(
+        "ce-review",
+        await pluginDescription("plugins/compound-engineering/skills/ce-code-review/SKILL.md"),
+      ),
+    )
+    await createFile(
+      path.join(root, "ce-brainstorm.md"),
+      promptWrapperContent(
+        "ce-brainstorm",
+        await pluginDescription("plugins/compound-engineering/skills/ce-brainstorm/SKILL.md"),
+      ),
+    )
 
     const removed = await cleanupStalePrompts(root)
 
@@ -267,6 +289,19 @@ describe("cleanupStalePrompts", () => {
 
     expect(removed).toBe(0)
     expect(await exists(path.join(root, "my-custom-prompt.md"))).toBe(true)
+  })
+
+  test("preserves same-named user prompt files when content does not match plugin fingerprints", async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "cleanup-prompts-user-"))
+    await createFile(
+      path.join(root, "ce-plan.md"),
+      "---\ndescription: \"A project-local ce-plan helper\"\n---\n\nCustom prompt body\n",
+    )
+
+    const removed = await cleanupStalePrompts(root)
+
+    expect(removed).toBe(0)
+    expect(await exists(path.join(root, "ce-plan.md"))).toBe(true)
   })
 })
 

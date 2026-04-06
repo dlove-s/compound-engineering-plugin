@@ -108,6 +108,21 @@ describe("writeCodexBundle", () => {
     )).toBe(true)
   })
 
+  test("preserves same-named user prompts during stale prompt cleanup", async () => {
+    const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codex-prompts-preserve-"))
+    const codexRoot = path.join(tempRoot, ".codex")
+    const promptsDir = path.join(codexRoot, "prompts")
+    await fs.mkdir(promptsDir, { recursive: true })
+    await fs.writeFile(
+      path.join(promptsDir, "ce-plan.md"),
+      "---\ndescription: \"Project-local ce-plan helper\"\n---\n\nCustom prompt body\n",
+    )
+
+    await writeCodexBundle(codexRoot, { prompts: [], skillDirs: [], generatedSkills: [] })
+
+    expect(await exists(path.join(promptsDir, "ce-plan.md"))).toBe(true)
+  })
+
   test("preserves existing user config when writing MCP servers", async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "codex-backup-"))
     const codexRoot = path.join(tempRoot, ".codex")

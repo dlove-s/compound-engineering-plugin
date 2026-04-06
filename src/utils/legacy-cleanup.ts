@@ -139,6 +139,7 @@ const LEGACY_SKILL_DESCRIPTION_ALIASES: Record<string, string[]> = {
 type LegacyFingerprints = {
   skills: Map<string, string>
   agents: Map<string, string>
+  prompts: Map<string, string>
 }
 
 let legacyFingerprintsPromise: Promise<LegacyFingerprints> | null = null
@@ -236,7 +237,7 @@ async function loadLegacyFingerprints(): Promise<LegacyFingerprints> {
     legacyFingerprintsPromise = (async () => {
       const repoRoot = await findRepoRoot(path.dirname(fileURLToPath(import.meta.url)))
       if (!repoRoot) {
-        return { skills: new Map(), agents: new Map() }
+        return { skills: new Map(), agents: new Map(), prompts: new Map() }
       }
 
       const pluginRoot = path.join(repoRoot, "plugins", "compound-engineering")
@@ -247,6 +248,7 @@ async function loadLegacyFingerprints(): Promise<LegacyFingerprints> {
 
       const skills = new Map<string, string>()
       const agents = new Map<string, string>()
+      const prompts = new Map<string, string>()
 
       for (const legacyName of STALE_SKILL_DIRS) {
         const currentPath = skillIndex.get(currentSkillNameForLegacy(legacyName))
@@ -262,11 +264,36 @@ async function loadLegacyFingerprints(): Promise<LegacyFingerprints> {
         if (description) agents.set(legacyName, description)
       }
 
-      return { skills, agents }
+      for (const fileName of STALE_PROMPT_FILES) {
+        const currentPath = skillIndex.get(currentSkillNameForLegacyPrompt(fileName))
+        if (!currentPath) continue
+        const description = await readDescription(currentPath)
+        if (description) prompts.set(fileName, description)
+      }
+
+      return { skills, agents, prompts }
     })()
   }
 
   return legacyFingerprintsPromise
+}
+
+function currentSkillNameForLegacyPrompt(fileName: string): string {
+  switch (fileName) {
+    case "ce-review.md":
+      return "ce-code-review"
+    default:
+      return path.basename(fileName, ".md")
+  }
+}
+
+function promptSkillNamesForLegacy(fileName: string): string[] {
+  switch (fileName) {
+    case "ce-review.md":
+      return ["ce-review", "ce-code-review"]
+    default:
+      return [path.basename(fileName, ".md")]
+  }
 }
 
 async function isLegacyPluginOwned(
@@ -291,6 +318,25 @@ async function isLegacyPluginOwned(
     ? LEGACY_SKILL_DESCRIPTION_ALIASES[path.basename(targetPath)] ?? []
     : []
   return aliases.includes(actualDescription ?? "")
+}
+
+async function isLegacyPromptWrapper(
+  targetPath: string,
+  expectedDescription: string | undefined,
+): Promise<boolean> {
+  if (!expectedDescription) return false
+
+  try {
+    const raw = await fs.readFile(targetPath, "utf8")
+    const { data, body } = parseFrontmatter(raw, targetPath)
+    if (data.description !== expectedDescription) return false
+
+    return promptSkillNamesForLegacy(path.basename(targetPath)).some((skillName) =>
+      body.includes(`Use the $${skillName} skill for this command and follow its instructions.`)
+    )
+  } catch {
+    return false
+  }
 }
 
 async function isLegacyKiroAgentConfig(targetPath: string): Promise<boolean> {
@@ -375,9 +421,12 @@ export async function cleanupStaleAgents(
  * Only applies to targets that used to generate workflow prompt wrappers (Codex).
  */
 export async function cleanupStalePrompts(promptsDir: string): Promise<number> {
+  const { prompts } = await loadLegacyFingerprints()
   let removed = 0
   for (const file of STALE_PROMPT_FILES) {
-    if (await removeIfExists(path.join(promptsDir, file))) removed++
+    const targetPath = path.join(promptsDir, file)
+    if (!(await isLegacyPromptWrapper(targetPath, prompts.get(file)))) continue
+    if (await removeIfExists(targetPath)) removed++
   }
   return removed
 }

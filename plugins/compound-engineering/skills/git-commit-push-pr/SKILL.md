@@ -311,25 +311,12 @@ When referencing actual GitHub issues or PRs, use the full format: `org/repo#123
 
 Append a badge footer to the PR description, separated by a `---` rule. Do not add one if the description already contains a Compound Engineering badge (e.g., added by another skill like ce-work).
 
-**Plugin version (pre-resolved):** !`jq -r .version "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"`
-
-If the line above resolved to a semantic version (e.g., `2.42.0`), use it as `[VERSION]` in the versioned badge below. Otherwise (empty, a literal command string, or an error), use the versionless badge. Do not attempt to resolve the version at runtime.
-
-**Versioned badge** (when version resolved above):
+**Badge:**
 
 ```markdown
 ---
 
-[![Compound Engineering v[VERSION]](https://img.shields.io/badge/Compound_Engineering-v[VERSION]-6366f1)](https://github.com/EveryInc/compound-engineering-plugin)
-🤖 Generated with [MODEL] ([CONTEXT] context, [THINKING]) via [HARNESS](HARNESS_URL)
-```
-
-**Versionless badge** (when version is not available):
-
-```markdown
----
-
-[![Compound Engineering](https://img.shields.io/badge/Compound_Engineering-6366f1)](https://github.com/EveryInc/compound-engineering-plugin)
+[![Compound Engineering](https://img.shields.io/badge/Built_with-Compound_Engineering-6366f1)](https://github.com/EveryInc/compound-engineering-plugin)
 🤖 Generated with [MODEL] ([CONTEXT] context, [THINKING]) via [HARNESS](HARNESS_URL)
 ```
 
@@ -359,7 +346,7 @@ EOF
 )"
 ```
 
-Use the versioned or versionless badge line resolved in the Compound Engineering badge section above.
+Use the badge from the Compound Engineering badge section above.
 
 Keep the PR title under 72 characters. The title follows the same convention as commit messages (Step 2).
 

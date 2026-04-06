@@ -98,12 +98,9 @@ If nothing obvious appears after a short scan, say so and continue. Two rules go
 
 **Slack context** (opt-in, Standard and Deep only) — never auto-dispatch. Route by condition:
 
-| `slack_*` tools available? | User asked for Slack context? | Action |
-|---|---|---|
-| Yes | Yes | Dispatch `compound-engineering:research:slack-researcher` with a brief summary of the brainstorm topic alongside Phase 1.1 work. Incorporate findings into constraint and context awareness. |
-| Yes | No | Note in output: "Slack tools detected. Ask me to search Slack for organizational context at any point, or include it in your next prompt." |
-| No | Yes | Note in output: "Slack context was requested but no Slack tools are available. Install and authenticate the Slack plugin to enable organizational context search." |
-| No | No | Do nothing. |
+- **Tools available + user asked**: Dispatch `compound-engineering:research:slack-researcher` with a brief summary of the brainstorm topic alongside Phase 1.1 work. Incorporate findings into constraint and context awareness.
+- **Tools available + user didn't ask**: Note in output: "Slack tools detected. Ask me to search Slack for organizational context at any point, or include it in your next prompt."
+- **No tools + user asked**: Note in output: "Slack context was requested but no Slack tools are available. Install and authenticate the Slack plugin to enable organizational context search."
 
 #### 1.2 Product Pressure Test
 

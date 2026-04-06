@@ -125,12 +125,9 @@ Consolidate all results into a short grounding summary. When issue intelligence 
 
 **Slack context** (opt-in) — never auto-dispatch. Route by condition:
 
-| `slack_*` tools available? | User asked for Slack context? | Action |
-|---|---|---|
-| Yes | Yes | Dispatch `compound-engineering:research:slack-researcher` with the focus hint in parallel with other Phase 1 agents. Include findings in the grounding summary. |
-| Yes | No | Note in output: "Slack tools detected. Ask me to search Slack for organizational context at any point, or include it in your next prompt." |
-| No | Yes | Note in output: "Slack context was requested but no Slack tools are available. Install and authenticate the Slack plugin to enable organizational context search." |
-| No | No | Do nothing. |
+- **Tools available + user asked**: Dispatch `compound-engineering:research:slack-researcher` with the focus hint in parallel with other Phase 1 agents. Include findings in the grounding summary.
+- **Tools available + user didn't ask**: Note in output: "Slack tools detected. Ask me to search Slack for organizational context at any point, or include it in your next prompt."
+- **No tools + user asked**: Note in output: "Slack context was requested but no Slack tools are available. Install and authenticate the Slack plugin to enable organizational context search."
 
 Do **not** do external research in v1.
 

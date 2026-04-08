@@ -54,10 +54,10 @@ If `inside_sandbox` is true, delegation would recurse or fail.
 **2. Availability Check**
 
 ```bash
-command -v codex
+command -v codex >/dev/null 2>&1 && echo "CODEX_AVAILABLE" || echo "CODEX_NOT_FOUND"
 ```
 
-If the Codex CLI is not on PATH: emit "Codex CLI not found -- using standard mode." and set `delegation_active` to false.
+If the output is `CODEX_NOT_FOUND`: emit "Codex CLI not found (install via `npm install -g @openai/codex` or `brew install codex`) -- using standard mode." and set `delegation_active` to false.
 
 **3. Consent Flow**
 

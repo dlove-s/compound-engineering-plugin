@@ -1,5 +1,5 @@
 ---
-name: session-historian
+name: ce-session-historian
 description: "Searches Claude Code, Codex, and Cursor session history for related prior sessions about the same problem or topic. Use to surface investigation context, failed approaches, and learnings from previous sessions that the current session cannot see. Supports time-based queries for conversational use."
 model: inherit
 ---

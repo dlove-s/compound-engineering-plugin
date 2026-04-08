@@ -62,7 +62,7 @@ All tokens are optional. Each one present means one less thing to infer. When ab
 - **Skip all user questions.** Never use the platform question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini) or other interactive prompts. Infer intent conservatively if the diff metadata is thin.
 - **Require a determinable diff scope.** If headless mode cannot determine a diff scope (no branch, PR, or `base:` ref determinable without user interaction), emit `Review failed (headless mode). Reason: no diff scope detected. Re-invoke with a branch name, PR number, or base:<ref>.` and stop without dispatching agents.
 - **Apply only `safe_auto -> review-fixer` findings in a single pass.** No bounded re-review rounds. Leave `gated_auto`, `manual`, `human`, and `release` work unresolved and return them in the structured output.
-- **Return all non-auto findings as structured text output.** Use the headless output envelope format (see Stage 6 below) preserving severity, autofix_class, owner, requires_verification, confidence, and pre_existing per finding. Enrich with detail-tier fields (why_it_matters, evidence[], suggested_fix) from the per-agent artifact files on disk (see Detail enrichment in Stage 6).
+- **Return all non-auto findings as structured text output.** Use the headless output envelope format (see Stage 6 below) preserving severity, autofix_class, owner, requires_verification, confidence, pre_existing, and suggested_fix per finding. Enrich with detail-tier fields (why_it_matters, evidence[]) from the per-agent artifact files on disk (see Detail enrichment in Stage 6).
 - **Write a run artifact** under `.context/compound-engineering/ce-review/<run-id>/` summarizing findings, applied fixes, and advisory outputs. Include the artifact path in the structured output.
 - **Do not create todo files.** The caller receives structured findings and routes downstream work itself.
 - **Do not switch the shared checkout.** If the caller passes an explicit PR or branch target, `mode:headless` must run in an isolated checkout/worktree or stop instead of running `gh pr checkout` / `git checkout`. When stopping, emit `Review failed (headless mode). Reason: cannot switch shared checkout. Re-invoke with base:<ref> to review the current checkout, or run from an isolated worktree.`
@@ -452,8 +452,9 @@ Detail-tier fields (`why_it_matters`, `evidence`) are in the artifact file only.
 
 Convert multiple reviewer compact JSON returns into one deduplicated, confidence-gated finding set. The compact returns contain merge-tier fields (title, severity, file, line, confidence, autofix_class, owner, requires_verification, pre_existing) plus the optional suggested_fix. Detail-tier fields (why_it_matters, evidence) are on disk in the per-agent artifact files and are not loaded at this stage.
 
-1. **Validate.** Check each compact return for merge-tier required fields and value constraints. Drop findings that fail either check. Record the drop count.
-   - **Required fields:** title, severity, file, line, confidence, autofix_class, owner, requires_verification, pre_existing
+1. **Validate.** Check each compact return for required top-level and per-finding fields, plus value constraints. Drop malformed returns or findings. Record the drop count.
+   - **Top-level required:** reviewer (string), residual_risks (array), testing_gaps (array). Drop the entire return if any are missing or wrong type.
+   - **Per-finding required:** title, severity, file, line, confidence, autofix_class, owner, requires_verification, pre_existing
    - **Value constraints:**
      - severity: P0 | P1 | P2 | P3
      - autofix_class: safe_auto | gated_auto | manual | advisory

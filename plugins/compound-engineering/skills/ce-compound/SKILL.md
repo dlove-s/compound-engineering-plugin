@@ -175,6 +175,7 @@ Launch research subagents. Each returns text data to the orchestrator.
        - Cross-Session Patterns: observations that only emerge across sessions
        ```
    - Omit the `mode` parameter so the user's configured permission settings apply
+   - Dispatch on the mid-tier model (e.g., `model: "sonnet"` in Claude Code) — the synthesis feeds into compound assembly and doesn't need frontier reasoning
    - Returns: structured digest of findings from prior sessions, or "no relevant prior sessions" if none found
 
 ### Phase 2: Assembly & Write

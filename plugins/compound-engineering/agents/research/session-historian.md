@@ -92,15 +92,16 @@ Key message types:
 
 ## Extraction Scripts
 
-Three unified scripts handle JSONL parsing for Claude Code, Codex, and Cursor. Each auto-detects the platform from the JSONL structure.
+**Execute scripts by path, not by reading them into context.** Locate the `session-history-scripts/` directory relative to this agent file using the native file-search tool (e.g., Glob), then run scripts directly. Do not use the Read tool to load script content and pass it via `python3 -c`.
 
-**Execute scripts by path, not by reading them into context.** Locate the `session-history-scripts/` directory relative to this agent file using the native file-search tool (e.g., Glob), then run scripts directly: `python3 /resolved/path/to/extract-metadata.py <args>`. Do not use the Read tool to load script content and pass it via `python3 -c` — that puts ~5K tokens of script source into the conversation history where it gets replayed on every subsequent tool call.
+Scripts:
 
-- `extract-metadata.py` -- Extracts session metadata from one or many files. Supports batch mode: pass all file paths as arguments in a single invocation. Outputs one JSON line per file plus a `_meta` summary. Pass `--cwd-filter <repo-name>` to filter Codex sessions at the script level (Codex sessions from other repos are excluded from output, keeping context small). Usage: `python3 <script-path> --cwd-filter <repo-name> /path/to/*.jsonl`
-- `extract-skeleton.py` -- Extracts the conversation skeleton: user messages, assistant text, and collapsed tool call summaries. Filters out raw tool inputs/outputs, thinking/reasoning blocks, and framework wrapper tags. Usage: `cat <file> | python3 <script-path>`
-- `extract-errors.py` -- Extracts error signals. Claude Code: tool results with `is_error`. Codex: commands with non-zero exit codes. Cursor: no error extraction possible. Usage: `cat <file> | python3 <script-path>`
+- `discover-sessions.sh` -- Discovers session files across all platforms. Handles directory structures, mtime filtering, repo-name matching, and zsh glob safety. Usage: `bash <script-dir>/discover-sessions.sh <repo-name> <days> [--platform claude|codex|cursor]`
+- `extract-metadata.py` -- Extracts session metadata. Batch mode: pass file paths as arguments. Pass `--cwd-filter <repo-name>` to filter Codex sessions at the script level. Usage: `python3 <script-dir>/extract-metadata.py --cwd-filter <repo-name> $(bash <script-dir>/discover-sessions.sh <repo-name> <days>)`
+- `extract-skeleton.py` -- Extracts the conversation skeleton: user messages, assistant text, and collapsed tool call summaries. Filters out raw tool inputs/outputs, thinking/reasoning blocks, and framework wrapper tags. Usage: `cat <file> | python3 <script-dir>/extract-skeleton.py`
+- `extract-errors.py` -- Extracts error signals. Claude Code: tool results with `is_error`. Codex: commands with non-zero exit codes. Cursor: no error extraction possible. Usage: `cat <file> | python3 <script-dir>/extract-errors.py`
 
-Every script outputs a `_meta` line at the end with `files_processed` and `parse_errors` counts. When `parse_errors > 0`, note in the response that extraction was partial.
+Python scripts output a `_meta` line at the end with `files_processed` and `parse_errors` counts. When `parse_errors > 0`, note in the response that extraction was partial.
 
 ## Methodology
 
@@ -113,19 +114,21 @@ Every script outputs a `_meta` line at the end with `files_processed` and `parse
 
 Determine the scan window from the Time Range table above, then discover and extract metadata.
 
-**Run metadata extraction in a single invocation across all sources.** Each bash call replays the full conversation context, so fewer calls = fewer tokens. Construct one command that covers all applicable platforms:
+**Derive the repo name** from `git rev-parse --git-common-dir` (returns the real repo's `.git` path even from a worktree — e.g., `/Users/x/Code/my-repo/.git` → repo name is `my-repo`). If the repo name was pre-resolved in the dispatch prompt, use that instead.
 
-**Repo name, not CWD.** The same repo appears under different paths — main checkout, Conductor worktrees, Claude Code worktrees. Derive the repo folder name from `git rev-parse --git-common-dir` (returns the real repo's `.git` path even from a worktree — e.g., `/Users/x/Code/my-repo/.git` → repo name is `my-repo`). Use this repo name to find matching project directories across all platforms.
+**Discover session files using the discovery script.** `session-history-scripts/discover-sessions.sh` handles all platform-specific directory structures, mtime filtering, and zsh glob safety. Run it by path (do not read it into context):
 
-**Pre-filter by file modification time.** A session file cannot contain data newer than its own modification time. Use `find -mtime` to skip files older than the scan window before passing them to the metadata script.
+```bash
+bash <script-dir>/discover-sessions.sh <repo-name> <days>
+```
 
-- **Claude Code:** Find project directories matching the repo name: `ls ~/.claude/projects/ | grep <repo-name>`. There may be multiple (one per checkout/worktree). Scan all matches: `find ~/.claude/projects/*<repo-name>*/ -maxdepth 1 -name "*.jsonl" -mtime -<days>`.
-- **Codex:** Use a glob range for date directories — e.g., `~/.codex/sessions/2026/04/0[1-7]/*.jsonl` for April 1-7. Do not use for loops or variable accumulation to collect files — glob expansion is simpler and avoids shell quoting issues with large file lists. Also check `~/.agents/sessions/` with the same pattern. Pass `--cwd-filter <repo-name>` to the metadata script to filter at the script level.
-- **Cursor:** Find project directories matching the repo name: `find ~/.cursor/projects/ -maxdepth 1 -type d -name "*<repo-name>*"`. Scan all matches: `find <matched-dirs>/agent-transcripts/ -name "*.jsonl" -mtime -<days>`.
+This outputs one file path per line across all platforms. To restrict to a single platform: `--platform claude|codex|cursor`. Pass the output to the metadata script with `--cwd-filter` to filter Codex sessions by repo name:
 
-Combine the results into a single invocation of `extract-metadata.py`. **Guard every glob and find with `2>/dev/null`** — in zsh (the default macOS shell), unmatched globs raise `no matches found` and abort the command before the script runs. Wrap each source's file list in a subshell: `$(find ... 2>/dev/null)` so an empty result produces nothing rather than an error.
+```bash
+python3 <script-dir>/extract-metadata.py --cwd-filter <repo-name> $(bash <script-dir>/discover-sessions.sh <repo-name> <days>)
+```
 
-If no source produces results, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
+If no files are found, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
 
 ### Step 3: Identify related sessions
 

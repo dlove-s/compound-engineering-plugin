@@ -411,3 +411,99 @@ describe("auto-detection", () => {
     }
   })
 })
+
+// ---------------------------------------------------------------------------
+// discover-sessions.sh
+// ---------------------------------------------------------------------------
+describe("discover-sessions", () => {
+  async function runDiscover(
+    ...args: string[]
+  ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+    const scriptPath = path.join(SCRIPTS_DIR, "discover-sessions.sh")
+    const proc = Bun.spawn(["bash", scriptPath, ...args], {
+      stdout: "pipe",
+      stderr: "pipe",
+    })
+    const stdout = await new Response(proc.stdout).text()
+    const stderr = await new Response(proc.stderr).text()
+    const exitCode = await proc.exited
+    return { stdout, stderr, exitCode }
+  }
+
+  test("returns zero files for nonexistent repo without error", async () => {
+    const { stdout, stderr, exitCode } = await runDiscover(
+      "nonexistent-repo-xyz",
+      "7",
+      "--platform",
+      "claude"
+    )
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe("")
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    expect(files.length).toBe(0)
+  })
+
+  test("returns zero files for nonexistent repo on cursor", async () => {
+    const { stdout, stderr, exitCode } = await runDiscover(
+      "nonexistent-repo-xyz",
+      "7",
+      "--platform",
+      "cursor"
+    )
+    expect(exitCode).toBe(0)
+    expect(stderr).toBe("")
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    expect(files.length).toBe(0)
+  })
+
+  test("all output lines are .jsonl files", async () => {
+    const { stdout, exitCode } = await runDiscover(
+      "compound-engineering-plugin",
+      "7"
+    )
+    expect(exitCode).toBe(0)
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    if (files.length > 0) {
+      for (const file of files) {
+        expect(file).toMatch(/\.jsonl$/)
+      }
+    }
+  })
+
+  test("--platform claude restricts to claude dirs only", async () => {
+    const { stdout } = await runDiscover(
+      "compound-engineering-plugin",
+      "7",
+      "--platform",
+      "claude"
+    )
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    for (const file of files) {
+      expect(file).toContain(".claude/projects")
+    }
+  })
+
+  test("--platform codex restricts to codex dirs only", async () => {
+    const { stdout } = await runDiscover(
+      "compound-engineering-plugin",
+      "7",
+      "--platform",
+      "codex"
+    )
+    const files = stdout.trim().split("\n").filter((l) => l.trim())
+    for (const file of files) {
+      expect(file).toMatch(/\.codex\/sessions|\.agents\/sessions/)
+    }
+  })
+
+  test("fails on unknown platform", async () => {
+    const { exitCode, stderr } = await runDiscover(
+      "compound-engineering-plugin",
+      "7",
+      "--platform",
+      "windsurf"
+    )
+    expect(exitCode).toBe(1)
+    expect(stderr).toContain("Unknown platform")
+  })
+})

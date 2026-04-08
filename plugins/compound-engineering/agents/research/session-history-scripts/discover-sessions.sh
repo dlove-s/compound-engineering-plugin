@@ -41,27 +41,13 @@ discover_claude() {
 
 # --- Codex ---
 discover_codex() {
-    local found_any=false
     for base in "$HOME/.codex/sessions" "$HOME/.agents/sessions"; do
         [ -d "$base" ] || continue
 
-        # Compute date directories within the scan window
-        local i=0
-        while [ "$i" -lt "$DAYS" ]; do
-            local date_dir
-            # macOS date vs GNU date
-            if date -v-${i}d +%Y/%m/%d >/dev/null 2>&1; then
-                date_dir=$(date -v-${i}d +%Y/%m/%d)
-            else
-                date_dir=$(date -d "$i days ago" +%Y/%m/%d 2>/dev/null || true)
-            fi
-
-            if [ -n "$date_dir" ] && [ -d "$base/$date_dir" ]; then
-                find "$base/$date_dir" -name "*.jsonl" 2>/dev/null
-                found_any=true
-            fi
-            i=$((i + 1))
-        done
+        # Use mtime-based discovery (consistent with Claude/Cursor) so that
+        # sessions started before the scan window but still active within it
+        # are not missed.
+        find "$base" -name "*.jsonl" -mtime "-${DAYS}" 2>/dev/null
     done
 }
 

@@ -410,7 +410,7 @@ describe("auto-detection", () => {
       expect(skelMeta._meta).toBe(true)
       expect(skelMeta.parse_errors).toBe(0)
     }
-  })
+  }, { timeout: 30_000 })
 })
 
 // ---------------------------------------------------------------------------

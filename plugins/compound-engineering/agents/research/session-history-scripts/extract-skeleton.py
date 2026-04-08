@@ -295,7 +295,7 @@ for line in sys.stdin:
             obj = json.loads(line)
             if obj.get("type") in ("user", "assistant"):
                 detected = "claude"
-            elif obj.get("type") in ("session_meta", "turn_context", "response_item"):
+            elif obj.get("type") in ("session_meta", "turn_context", "response_item", "event_msg"):
                 detected = "codex"
             elif obj.get("role") in ("user", "assistant") and "type" not in obj:
                 detected = "cursor"

@@ -123,7 +123,7 @@ Determine the scan window from the Time Range table above, then discover and ext
 - **Codex:** Use a glob range for date directories — e.g., `~/.codex/sessions/2026/04/0[1-7]/*.jsonl` for April 1-7. Do not use for loops or variable accumulation to collect files — glob expansion is simpler and avoids shell quoting issues with large file lists. Also check `~/.agents/sessions/` with the same pattern. Pass `--cwd-filter <repo-name>` to the metadata script to filter at the script level.
 - **Cursor:** Find project directories matching the repo name: `find ~/.cursor/projects/ -maxdepth 1 -type d -name "*<repo-name>*"`. Scan all matches: `find <matched-dirs>/agent-transcripts/ -name "*.jsonl" -mtime -<days>`.
 
-Combine the results into a single invocation of `extract-metadata.py`. If a source has no matching files, that's fine — the script processes whatever files it receives.
+Combine the results into a single invocation of `extract-metadata.py`. **Guard every glob and find with `2>/dev/null`** — in zsh (the default macOS shell), unmatched globs raise `no matches found` and abort the command before the script runs. Wrap each source's file list in a subshell: `$(find ... 2>/dev/null)` so an empty result produces nothing rather than an error.
 
 If no source produces results, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
 

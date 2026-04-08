@@ -21,10 +21,10 @@ import re
 stats = {"lines": 0, "parse_errors": 0, "user": 0, "assistant": 0, "tool": 0}
 
 # Claude Code wrapper tags to strip from user message content.
-# task-notification and local-command-caveat: strip entirely (tag + content).
-# command-message, command-name, command-args: strip tags, keep content.
+# Strip entirely (tag + content): framework noise and raw command output.
+# Strip tags only (keep content): command-message, command-name, command-args, user_query.
 _STRIP_BLOCK = re.compile(
-    r"<(?:task-notification|local-command-caveat|system-reminder)[^>]*>.*?</(?:task-notification|local-command-caveat|system-reminder)>",
+    r"<(?:task-notification|local-command-caveat|local-command-stdout|local-command-stderr|system-reminder)[^>]*>.*?</(?:task-notification|local-command-caveat|local-command-stdout|local-command-stderr|system-reminder)>",
     re.DOTALL,
 )
 _STRIP_TAG = re.compile(

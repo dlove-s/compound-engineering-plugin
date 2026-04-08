@@ -14,6 +14,17 @@ import json
 stats = {"lines": 0, "parse_errors": 0, "errors_found": 0}
 
 
+def summarize_error(raw):
+    """Extract a short error summary instead of dumping the full payload."""
+    text = str(raw).strip()
+    # Take the first non-empty line as the error message
+    for line in text.split("\n"):
+        line = line.strip()
+        if line:
+            return line[:200]
+    return text[:200]
+
+
 def handle_claude(obj):
     if obj.get("type") == "user":
         content = obj.get("message", {}).get("content", [])
@@ -21,8 +32,8 @@ def handle_claude(obj):
             for block in content:
                 if block.get("type") == "tool_result" and block.get("is_error"):
                     ts = obj.get("timestamp", "")[:19]
-                    result = str(block.get("content", ""))[:500]
-                    print(f"[{ts}] [error] {result}")
+                    summary = summarize_error(block.get("content", ""))
+                    print(f"[{ts}] [error] {summary}")
                     print("---")
                     stats["errors_found"] += 1
 
@@ -48,10 +59,8 @@ def handle_codex(obj):
 
             if exit_match is not None or stderr:
                 ts = obj.get("timestamp", "")[:19]
-                error_info = stderr[:300] if stderr else output[:300]
-                print(f"[{ts}] [error] exit={exit_match} cmd={cmd_str[:200]}")
-                if error_info:
-                    print(f"  {error_info}")
+                error_summary = summarize_error(stderr if stderr else output)
+                print(f"[{ts}] [error] exit={exit_match} cmd={cmd_str[:120]}: {error_summary}")
                 print("---")
                 stats["errors_found"] += 1
 

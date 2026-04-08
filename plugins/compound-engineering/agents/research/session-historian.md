@@ -115,20 +115,15 @@ Determine the scan window from the Time Range table above, then discover and ext
 
 **Run metadata extraction in a single invocation across all sources.** Each bash call replays the full conversation context, so fewer calls = fewer tokens. Construct one command that covers all applicable platforms:
 
-**Pre-filter by file modification time.** A session file cannot contain data newer than its own modification time. Use `find -mtime` to skip files older than the scan window before passing them to the metadata script. This eliminates the majority of files without any JSONL parsing.
+**Repo name, not CWD.** The same repo appears under different paths — main checkout, Conductor worktrees, Claude Code worktrees. Derive the repo folder name from `git rev-parse --git-common-dir` (returns the real repo's `.git` path even from a worktree — e.g., `/Users/x/Code/my-repo/.git` → repo name is `my-repo`). Use this repo name to find matching project directories across all platforms.
 
-- **Claude Code (project-scoped):** `find ~/.claude/projects/<encoded-cwd>/ -maxdepth 1 -name "*.jsonl" -mtime -<days>` where `<encoded-cwd>` replaces `/` with `-` in the CWD, and `<days>` matches the scan window.
-- **Claude Code (all projects):** `find ~/.claude/projects/ -name "*.jsonl" -mtime -<days>`
-- **Codex:** `~/.codex/sessions/YYYY/MM/DD/*.jsonl` for date directories within the scan window. Also check `~/.agents/sessions/`. When project-scoped, filter metadata results by **repo name**, not exact CWD. The same repo can appear under different paths (main checkout, Conductor worktrees, Claude Code worktrees). Derive the repo name from `git rev-parse --git-common-dir` (gives the real repo's `.git` path even from a worktree) and match Codex session CWDs that contain that repo folder name.
-- **Cursor:** `find ~/.cursor/projects/<encoded-cwd>/agent-transcripts/ -name "*.jsonl" -mtime -<days>`. Same CWD-encoding as Claude Code.
+**Pre-filter by file modification time.** A session file cannot contain data newer than its own modification time. Use `find -mtime` to skip files older than the scan window before passing them to the metadata script.
 
-Combine the results into a single invocation of `extract-metadata.py`:
+- **Claude Code:** Find project directories matching the repo name: `ls ~/.claude/projects/ | grep <repo-name>`. There may be multiple (one per checkout/worktree). Scan all matches: `find ~/.claude/projects/*<repo-name>*/ -maxdepth 1 -name "*.jsonl" -mtime -<days>`.
+- **Codex:** `~/.codex/sessions/YYYY/MM/DD/*.jsonl` for date directories within the scan window. Also check `~/.agents/sessions/`. Filter metadata results to sessions whose `cwd` contains the repo name.
+- **Cursor:** Find project directories matching the repo name: `find ~/.cursor/projects/ -maxdepth 1 -type d -name "*<repo-name>*"`. Scan all matches: `find <matched-dirs>/agent-transcripts/ -name "*.jsonl" -mtime -<days>`.
 
-```bash
-python3 <script-path> $(find ~/.claude/projects/<encoded-cwd>/ -maxdepth 1 -name "*.jsonl" -mtime -7) $(find ~/.cursor/projects/<encoded-cwd>/agent-transcripts/ -name "*.jsonl" -mtime -7 2>/dev/null) ~/.codex/sessions/2026/04/0[1-7]/*.jsonl
-```
-
-If a source has no matching files, that's fine — the script processes whatever files it receives.
+Combine the results into a single invocation of `extract-metadata.py`. If a source has no matching files, that's fine — the script processes whatever files it receives.
 
 If no source produces results, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
 

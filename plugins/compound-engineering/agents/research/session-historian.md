@@ -93,13 +93,15 @@ Key message types:
 
 ## Extraction Scripts
 
-Three unified scripts handle JSONL parsing for Claude Code, Codex, and Cursor. Each auto-detects the platform from the JSONL structure. Read script content with the file-read tool, then execute by passing the content to `python3 -c`.
+Three unified scripts handle JSONL parsing for Claude Code, Codex, and Cursor. Each auto-detects the platform from the JSONL structure.
 
-- `session-history-scripts/extract-metadata.py` -- Extracts session metadata from one or many files. Supports batch mode: pass all file paths as arguments to process them in a single invocation. Outputs one JSON line per file plus a `_meta` summary line with processing stats. For Cursor, derives timestamp from file modification date and session ID from directory name. Usage: `python3 -c '<script>' /path/to/*.jsonl`
-- `session-history-scripts/extract-skeleton.py` -- Extracts the conversation skeleton: user messages, assistant text, and a one-line summary per tool call (tool name, target, success/fail where available). Filters out raw tool inputs/outputs, thinking/reasoning blocks, and framework wrapper tags. Cursor skeletons omit timestamps and tool result status since the format doesn't capture them. Usage: `cat <file> | python3 -c '<script>'`
-- `session-history-scripts/extract-errors.py` -- Extracts error signals. Claude Code: tool results with `is_error`. Codex: commands with non-zero exit codes. Cursor: no error extraction possible (tool results not logged). Usage: `cat <file> | python3 -c '<script>'`
+**Execute scripts by path, not by reading them into context.** Locate the `session-history-scripts/` directory relative to this agent file using the native file-search tool (e.g., Glob), then run scripts directly: `python3 /resolved/path/to/extract-metadata.py <args>`. Do not use the Read tool to load script content and pass it via `python3 -c` — that puts ~5K tokens of script source into the conversation history where it gets replayed on every subsequent tool call.
 
-Every script outputs a `_meta` line at the end with `files_processed` and `parse_errors` counts. When `parse_errors > 0`, note in the response that extraction was partial -- some sessions may have changed format.
+- `extract-metadata.py` -- Extracts session metadata from one or many files. Supports batch mode: pass all file paths as arguments in a single invocation. Outputs one JSON line per file plus a `_meta` summary. Usage: `python3 <script-path> /path/to/*.jsonl`
+- `extract-skeleton.py` -- Extracts the conversation skeleton: user messages, assistant text, and collapsed tool call summaries. Filters out raw tool inputs/outputs, thinking/reasoning blocks, and framework wrapper tags. Usage: `cat <file> | python3 <script-path>`
+- `extract-errors.py` -- Extracts error signals. Claude Code: tool results with `is_error`. Codex: commands with non-zero exit codes. Cursor: no error extraction possible. Usage: `cat <file> | python3 <script-path>`
+
+Every script outputs a `_meta` line at the end with `files_processed` and `parse_errors` counts. When `parse_errors > 0`, note in the response that extraction was partial.
 
 ## Methodology
 
@@ -110,43 +112,22 @@ Every script outputs a `_meta` line at the end with `files_processed` and `parse
 - **Project scope**: Default to the current project. Widen to all projects only when the question explicitly asks.
 - **Platform scope**: Default to all platforms (Claude Code, Codex, Cursor). Narrow to a single platform when the question specifies one. If unclear on either dimension, use the default.
 
-Determine the scan window from the Time Range table above, then discover and extract metadata in bulk.
+Determine the scan window from the Time Range table above, then discover and extract metadata.
 
-**Claude Code (project-scoped):** Derive the session directory from the current working directory (replace `/` with `-`, prepend `-`). Run the metadata script in batch mode:
+**Run metadata extraction in a single invocation across all sources.** Each bash call replays the full conversation context, so fewer calls = fewer tokens. Construct one command that covers all applicable platforms:
 
-```bash
-python3 -c '<extract-metadata script>' ~/.claude/projects/<encoded-cwd>/*.jsonl
-```
+- **Claude Code (project-scoped):** `~/.claude/projects/<encoded-cwd>/*.jsonl` where `<encoded-cwd>` replaces `/` with `-` in the CWD. For repos with many sessions, pre-filter to the 20 most recent files: `ls -t ~/.claude/projects/<encoded-cwd>/*.jsonl | head -20`.
+- **Claude Code (all projects):** `~/.claude/projects/*/*.jsonl`
+- **Codex:** `~/.codex/sessions/YYYY/MM/DD/*.jsonl` for date directories within the scan window. Also check `~/.agents/sessions/`. When project-scoped, filter results to sessions whose `cwd` matches the current working directory.
+- **Cursor:** `~/.cursor/projects/<encoded-cwd>/agent-transcripts/*/*.jsonl`. Same CWD-encoding as Claude Code.
 
-**Claude Code (all projects):** Scan all project directories:
-
-```bash
-python3 -c '<extract-metadata script>' ~/.claude/projects/*/*.jsonl
-```
-
-This produces one JSON line per session (with `platform`, `branch`, `ts`, `session`, `file`, `size`) plus a `_meta` summary. Filter results by timestamp against the scan window.
-
-**Codex:** Check both `~/.codex/sessions/` and `~/.agents/sessions/`. Compute date directories within the scan window and run the metadata script in batch mode:
+Combine these globs into a single invocation of `extract-metadata.py`. The script handles mixed platforms via auto-detection:
 
 ```bash
-python3 -c '<extract-metadata script>' ~/.codex/sessions/2026/04/07/*.jsonl ~/.codex/sessions/2026/04/06/*.jsonl ...
+python3 <script-path> $(ls -t ~/.claude/projects/<encoded-cwd>/*.jsonl | head -20) ~/.codex/sessions/2026/04/0[3-7]/*.jsonl ~/.cursor/projects/<encoded-cwd>/agent-transcripts/*/*.jsonl
 ```
 
-When project-scoped, filter results to only sessions whose `cwd` matches the current working directory. When all-projects, keep all results.
-
-**Cursor:** Same directory structure as Claude Code. Derive the project directory and scan agent transcripts:
-
-```bash
-python3 -c '<extract-metadata script>' ~/.cursor/projects/<encoded-cwd>/agent-transcripts/*/*.jsonl
-```
-
-**Cursor (all projects):**
-
-```bash
-python3 -c '<extract-metadata script>' ~/.cursor/projects/*/agent-transcripts/*/*.jsonl
-```
-
-Cursor metadata has no in-file timestamps — the script derives them from file modification dates. Filter by the scan window using these derived timestamps.
+If a glob expands to nothing (source doesn't exist or has no files), that's fine — the script processes whatever files it receives. Filter the output by timestamp against the scan window.
 
 If no source produces results, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
 

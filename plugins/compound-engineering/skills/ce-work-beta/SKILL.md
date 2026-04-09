@@ -48,7 +48,7 @@ Also read from the config file when present:
 - `work_delegate_consent` -- `true` or default `false`
 - `work_delegate_sandbox` -- `yolo` (default) or `full-auto`
 - `work_delegate_decision` -- `auto` (default) or `ask`
-- `work_delegate_model` -- Codex model to use (default `gpt-5.4`). Passthrough — any valid model name accepted.
+- `work_delegate_model` -- Codex model to use (default `gpt-5.4`). Must support `--output-schema` for structured result reporting; `gpt-5-codex` and `codex-` prefixed models do not (Codex CLI bug #4181). Stick to `gpt-5` family models (e.g., `o4-mini`, `gpt-5.4`).
 - `work_delegate_effort` -- `minimal`, `low`, `medium`, `high` (default), or `xhigh`
 
 Store the resolved state for downstream consumption:

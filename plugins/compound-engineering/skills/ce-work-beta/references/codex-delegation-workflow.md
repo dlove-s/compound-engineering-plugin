@@ -77,7 +77,7 @@ On acceptance:
 
 On decline:
 - Ask whether to disable delegation entirely for this project
-- If yes: write `work_delegate: false` to `.compound-engineering/config.local.yaml`, set `delegation_active` to false, proceed in standard mode
+- If yes: write `work_delegate: false` to `.compound-engineering/config.local.yaml`. To write: (1) if file or directory does not exist, create `.compound-engineering/` and write the YAML file; (2) if file exists, merge new keys preserving existing keys. Set `delegation_active` to false, proceed in standard mode
 - If no: set `delegation_active` to false for this invocation only, proceed in standard mode
 
 **Headless consent:** If running in a headless or non-interactive context, delegation proceeds only if `work_delegate_consent` is already `true` in the config file. If consent is not recorded, set `delegation_active` to false silently.
@@ -208,6 +208,9 @@ If tracked files are dirty, stop and present options: (1) commit current changes
 Write the prompt file, then make a single Bash tool call with `run_in_background: true` set on the tool parameter. This call returns immediately and has no timeout ceiling.
 
 ```bash
+# Substitute the resolved sandbox_mode value (yolo or full-auto) from the skill state
+SANDBOX_MODE="<sandbox_mode>"
+
 # Resolve sandbox flag
 if [ "$SANDBOX_MODE" = "full-auto" ]; then
   SANDBOX_FLAG="--full-auto"

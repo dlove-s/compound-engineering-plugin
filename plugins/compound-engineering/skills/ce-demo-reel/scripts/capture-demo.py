@@ -518,13 +518,14 @@ def cmd_upload(args):
     def _try_upload():
         try:
             result = subprocess.run(
-                ["curl", "-s", "-F", "reqtype=fileupload",
+                ["curl", "-s", "--connect-timeout", "10",
+                 "-F", "reqtype=fileupload",
                  "-F", f"fileToUpload=@{file_path}", CATBOX_API],
-                capture_output=True, text=True, timeout=120, check=False,
+                capture_output=True, text=True, timeout=30, check=False,
             )
             return result.stdout.strip()
         except subprocess.TimeoutExpired:
-            print("ERROR: Upload timed out after 120s", file=sys.stderr)
+            print("ERROR: Upload timed out after 30s", file=sys.stderr)
             return ""
 
     url = _try_upload()
@@ -538,8 +539,8 @@ def cmd_upload(args):
     print(f"Local file preserved at: {file_path}", file=sys.stderr)
 
     # Retry once
-    print("Retrying in 5 seconds...", file=sys.stderr)
-    time.sleep(5)
+    print("Retrying in 2 seconds...", file=sys.stderr)
+    time.sleep(2)
     url = _try_upload()
 
     if url.startswith("https://"):

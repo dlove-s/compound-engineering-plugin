@@ -151,7 +151,7 @@ cmd_stitch() {
       reduced_frames+=("${frames[0]}")
       # Keep every other middle frame
       local step=$(( (${#frames[@]} - 1) / 2 ))
-      [[ $step -lt 1 ]] && step=1
+      [[ $step -lt 2 ]] && step=2
       for ((j=step; j < ${#frames[@]} - 1; j+=step)); do
         reduced_frames+=("${frames[$j]}")
       done
@@ -186,7 +186,7 @@ cmd_upload() {
   echo "Uploading $file (${size_mb} MB) to catbox.moe..."
 
   local url
-  url=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${file}" "$CATBOX_API")
+  url=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${file}" "$CATBOX_API") || true
 
   if [[ "$url" == https://* ]]; then
     echo "Uploaded: $url"
@@ -198,7 +198,7 @@ cmd_upload() {
     # Retry once
     echo "Retrying in 5 seconds..." >&2
     sleep 5
-    url=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${file}" "$CATBOX_API")
+    url=$(curl -s -F "reqtype=fileupload" -F "fileToUpload=@${file}" "$CATBOX_API") || true
     if [[ "$url" == https://* ]]; then
       echo "Uploaded (retry): $url"
       echo "$url"

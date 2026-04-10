@@ -87,9 +87,7 @@ The primary entry points for engineering work, invoked as slash commands:
 
 | Skill | Description |
 |-------|-------------|
-| `agent-browser` | CLI-based browser automation using Vercel's agent-browser |
 | `gemini-imagegen` | Generate and edit images using Google's Gemini API |
-| `rclone` | Upload files to S3, Cloudflare R2, Backblaze B2, and cloud storage |
 
 ### Beta / Experimental
 
@@ -170,8 +168,6 @@ Agents are specialized subagents invoked by skills — you typically don't call 
 
 | Agent | Description |
 |-------|-------------|
-| `bug-reproduction-validator` | Systematically reproduce and validate bug reports |
-| `lint` | Run linting and code quality checks on Ruby and ERB files |
 | `pr-comment-resolver` | Address PR comments and implement fixes |
 | `spec-flow-analyzer` | Analyze user flows and identify gaps in specifications |
 
@@ -180,17 +176,6 @@ Agents are specialized subagents invoked by skills — you typically don't call 
 | Agent | Description |
 |-------|-------------|
 | `ankane-readme-writer` | Create READMEs following Ankane-style template for Ruby gems |
-
-## Browser Automation
-
-This plugin uses **agent-browser CLI** for browser automation tasks. Install it globally:
-
-```bash
-npm install -g agent-browser
-agent-browser install  # Downloads Chromium
-```
-
-The `agent-browser` skill provides comprehensive documentation on usage.
 
 ## Installation
 

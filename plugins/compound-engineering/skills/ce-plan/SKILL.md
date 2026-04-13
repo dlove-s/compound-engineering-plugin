@@ -136,6 +136,11 @@ If the bootstrap uncovers major unresolved product questions:
 - Recommend `ce:brainstorm` again
 - If the user still wants to continue, require explicit assumptions before proceeding
 
+If the bootstrap reveals that a different workflow would serve the user better:
+
+- **Symptom without a root cause** (user describes broken behavior but hasn't identified why) — announce that investigation is needed before planning and load the `ce:debug` skill. A plan requires a known problem to solve; debugging identifies what that problem is. Announce the routing clearly: "This needs investigation before planning — switching to ce:debug to find the root cause."
+- **Clear task ready to execute** (known root cause, obvious fix, no architectural decisions) — suggest `ce:work` as a faster alternative alongside continuing with planning. The user decides.
+
 #### 0.5 Classify Outstanding Questions Before Planning
 
 If the origin document contains `Resolve Before Planning` or similar blocking questions:

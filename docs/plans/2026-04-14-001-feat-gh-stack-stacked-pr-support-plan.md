@@ -26,6 +26,8 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 - R5. `ce-setup` recommends installing the `gh stack` extension
 - R6. All skills gracefully handle `gh stack` not being installed (hard gate in `git-stack`, soft suggestion elsewhere)
 - R7. Stack detection uses a bundled script, not model reasoning, for mechanical state analysis
+- R8. `resolve-pr-feedback` handles review feedback on stacked PRs -- identifies the correct layer to fix in, cascades via `gh stack rebase`, pushes, and replies on the correct PR
+- R9. `ce:plan` assesses stack candidacy of the produced plan and surfaces a stacking recommendation when warranted, offering to install `gh stack` if not already present
 
 ## Scope Boundaries
 
@@ -36,8 +38,9 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
 ### Deferred to Separate Tasks
 
-- Planned stacking during execution: future iteration after retroactive splitting is validated
-- Stack-aware `resolve-pr-feedback`: propagating review fixes across dependent PRs in a stack
+- Planned stacking during execution: future iteration after retroactive splitting is validated. This specifically means creating stack layers as implementation units complete inside ce-work's Phase 2 loop -- the highest-risk area of the plugin. The current plan adds stacking at Phase 4 (shipping) only.
+- V2 of stack-aware `resolve-pr-feedback`: multi-layer fixes (one review comment requiring changes in multiple layers) and automated conflict resolution during `gh stack rebase`. V1 (Unit 7) handles single-layer fixes and hands off conflicts to the user.
+- **Codex delegation for stacking workflows.** ce-work-beta's Codex delegation is scoped to Phase 2 (unit implementation); the delegation boundary explicitly retains "planning, review, git operations, and orchestration" for Claude Code. Stack creation (Units 3/4) is predominantly git operations plus interactive user approval of layer proposals -- it does not resemble the unit-writing loop delegation was built for, and delegating it would cut against the existing boundary. Stack-aware feedback (Unit 7) has one delegable slice (applying the fix on the owning layer, same as non-stacked feedback fixes), but `resolve-pr-feedback` does not currently integrate with Codex delegation -- extending it here would introduce Codex-delegation-for-feedback wholesale, a much larger scope than "make feedback handling stack-aware." Defer until adoption data shows users rely on stacking heavily enough to justify the delegation surface. Extension is additive -- a future plan can add delegation seams to git-stack and/or resolve-pr-feedback without reworking anything shipped by this plan.
 
 ## Context & Research
 
@@ -60,8 +63,15 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 ### External References
 
 - gh-stack documentation: https://github.github.com/gh-stack/
-- Key CLI commands: `gh stack init`, `gh stack add`, `gh stack push`, `gh stack submit`, `gh stack alias`
-- Currently in private preview -- the extension may be installed but access not yet granted
+- Full CLI surface (verified against installed extension via `gh stack --help`): `init`, `add`, `alias`, `bottom`, `checkout`, `down`, `feedback`, `merge`, `push`, `rebase`, `submit`, `sync`, `top`, `unstack`, `up`, `view`
+- Key commands for this plan:
+  - Creation: `gh stack init`, `gh stack add`, `gh stack push`, `gh stack submit`
+  - Navigation: `gh stack checkout`, `gh stack bottom`, `gh stack top`, `gh stack up`, `gh stack down`
+  - Inspection: `gh stack view` (no `status` command exists -- `view` is the canonical inspection command)
+  - Cascade/modification: `gh stack rebase` with `--upstack` / `--downstack` / `--continue` / `--abort` flags. Documented behavior: "Pull from remote and do a cascading rebase across the stack. Ensures that each branch in the stack has the tip of the previous layer in its commit history."
+  - Post-merge: `gh stack sync`, `gh stack merge`
+  - Teardown: `gh stack unstack`
+- Currently in private preview -- the extension may be installed but access not yet granted. Public documentation at the URL above covers UI capabilities; CLI command details are accurate via `gh stack <cmd> --help`.
 
 ## Key Technical Decisions
 
@@ -75,21 +85,25 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
 - **Reference file extraction for all stacking logic**: Per the 50-line threshold learning, stacking workflow content in `git-commit-push-pr` and the splitting workflow in `git-stack` go in reference files. The main SKILL.md stays lean for non-stacking invocations.
 
+- **Offer-and-run install, not print-the-command**: Any skill that detects `GH_STACK_NOT_INSTALLED` at a decision point where stacking would help offers to run `gh extension install github/gh-stack` directly rather than printing the command and leaving the user to copy-paste. Pattern: `AskUserQuestion` yes/no -> on yes, execute the install and inspect exit code -> on success, continue into the stacking workflow; on failure (access denied / network / auth), fall back with a clear error; on decline, fall back silently. Applied consistently across `git-stack` (Unit 3), `git-commit-push-pr` (Unit 5), ce-work / ce-work-beta shipping workflow (Unit 6), and `ce:plan` (Unit 8). Rationale: AI agents should reduce friction, not just describe it. A copy-paste install command is inferior UX when the agent can just run it.
+
+- **Respect prior user decisions about stacking within the session (governing principle)**: If the user has already addressed a stacking-related decision earlier in the session -- declined stacking, declined install, approved a split, adjusted a layer proposal -- no subsequent skill should re-prompt for the same decision unless circumstances have changed materially (e.g., a small change has grown substantially and the prior decline no longer fits). This principle applies across all invocation chains (ce:plan -> ce:work -> shipping -> git-commit-push-pr -> git-stack -> resolve-pr-feedback) AND across individual invocations within the same session. Primary enforcement is the agent's context awareness of prior conversation; structured context signals (`stacking_declined`, `gh_stack_install_declined`) are a secondary mechanism used during explicit skill delegation. Individual units should defer to this principle rather than each re-specifying signal-check logic. Re-prompting is only appropriate when a material change in circumstances makes the prior decision no longer fit; the agent exercises judgment.
+
 - **Direct modification of stable skills (no beta)**: The changes to existing skills are additive and behind user opt-in (the agent asks, user confirms). The new `git-stack` skill is standalone. The risk profile does not warrant the beta framework overhead. The shipping workflow changes will be tested via frontmatter validation and manual verification.
 
 ## Open Questions
 
 ### Resolved During Planning
 
-- **How to detect gh-stack installation?** `gh extension list 2>/dev/null | grep -q 'gh-stack'` for installation, `gh stack status` at runtime for access verification. Pre-resolution sentinel pattern: `GH_STACK_INSTALLED` / `GH_STACK_NOT_INSTALLED`.
+- **How to detect gh-stack installation?** `gh extension list 2>/dev/null | grep -q 'gh-stack'` for installation, `gh stack view` at runtime for access verification. Pre-resolution sentinel pattern: `GH_STACK_INSTALLED` / `GH_STACK_NOT_INSTALLED`.
 - **What tier for ce-setup?** `recommended` -- broadly useful, zero-cost, enables agent suggestions.
 - **Beta or direct?** Direct -- changes to existing skills are additive and behind user consent. New skill is standalone.
 
 ### Deferred to Implementation
 
-- **Exact heuristics for "large change" suggestion threshold**: The right thresholds (file count, line count, concern count) depend on testing with real-world diffs. Start with reasonable defaults (20+ files AND 500+ lines AND 3+ distinct concerns -- all three must be met) and tune based on experience.
+- **Exact threshold for the stage-1 size/spread hint**: Starting values are > ~400 net LOC OR > 2 top-level subsystem boundaries, grounded in SmartBear/Cisco (2006) and Rigby & Bird (2013) data showing review defect detection degrades sharply above ~400 LOC. Tune the stage-1 trigger based on experience. The stage-2 effectiveness test itself (independence, reviewer divergence, sequencing value, mixed kinds; anti-pattern exclusions) is evidence-grounded from practitioner consensus (Graphite, ghstack/Meta, Google, Aviator) and should not need tuning -- only the stage-1 trigger should vary.
 - **Partial file splitting**: The initial version assigns files to layers at the whole-file level. When the agent identifies a file whose changes span multiple concerns, it assigns the file to the layer that owns its primary concern and notes the cross-concern overlap in the PR description. Per-hunk splitting (via `git add -p` or diff reconstruction) is deferred to a follow-up iteration after the whole-file approach is validated.
-- **Private preview access handling**: `gh stack` may be installed but return an access error. The runtime check (`gh stack status`) will surface this, but the exact error message format is not yet known.
+- **Private preview access handling**: `gh stack` may be installed but return an access error. The runtime check (`gh stack view`) will surface this, but the exact error message format is not yet known.
 - **Dependency readiness gate**: gh-stack is in private preview with no published GA timeline. Before starting Units 2-6, verify: (a) the CLI surface used in this plan is stable enough that preview-to-GA changes won't require rework, and (b) the implementer has access to test against. If either condition is unmet, ship Unit 1 + Unit 5's passive suggestion only and defer the full integration.
 
 ## Implementation Units
@@ -140,9 +154,15 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
   **Approach:**
   The script runs three analysis passes and outputs structured, labeled sections:
 
-  1. **Tool check**: `gh extension list | grep gh-stack` for installation, `gh stack status` for access
-  2. **Stack state**: If on a branch, check if it's part of an existing stack (parse `gh stack status` output). Output one of: `NOT_IN_STACK`, `STACK_HEAD`, `STACK_MIDDLE`, `STACK_BOTTOM`. Per the state-machine learning, each state requires different routing in consuming skills (e.g., `gh stack push` behavior differs for head vs middle layers). Support a `--mock` flag or `STACK_DETECT_MOCK` env var to simulate gh-stack states for testing without the extension installed.
-  3. **Change analysis**: When given a base branch argument, output summary stats (file count, line count, commit count, distinct directory prefixes as a rough signal for change spread -- not a reliable concern count, since a single feature often spans multiple directories)
+  1. **Tool check**: `gh extension list | grep gh-stack` for installation, `gh stack view` for access
+  2. **Stack state**: If on a branch, check if it's part of an existing stack (parse `gh stack view` output). Output one of: `NOT_IN_STACK`, `STACK_HEAD`, `STACK_MIDDLE`, `STACK_BOTTOM`. Per the state-machine learning, each state requires different routing in consuming skills (e.g., `gh stack push` behavior differs for head vs middle layers). Support a `--mock` flag or `STACK_DETECT_MOCK` env var to simulate gh-stack states for testing without the extension installed.
+  3. **Change analysis**: When given a base branch argument, output signals designed to feed the effectiveness test in consuming skills (see Unit 5). The script stays mechanical -- it surfaces signals, not judgments:
+     - `files`, `insertions`, `deletions`, `commits` (size hint only -- feeds stage 1)
+     - `directories`: distinct top-level directory prefixes touched (spread signal -- feeds stage 1)
+     - `renames_only_commits`: count of commits whose diff is purely renames/moves (detected via `git log --diff-filter=R --numstat`) -- strong mechanical-codemod anti-pattern signal
+     - `commit_log`: one line per commit (sha + message subject) -- feeds the model's independence and mixed-kinds judgment in stage 2
+
+     The model reads these fields to apply the effectiveness test. The script does not compute "concerns" or "should stack" -- those are judgments that depend on diff semantics.
 
   Output format: labeled sections with sentinel values, parseable by the skill without model reasoning. Example:
   ```
@@ -156,6 +176,13 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
   deletions: 180
   commits: 12
   directories: src/models, src/controllers, src/views, test/
+  renames_only_commits: 2
+  === COMMIT_LOG ===
+  a1b2c3d refactor: extract BillingCalculator
+  d4e5f6g refactor: rename Invoice.total to Invoice.gross_total
+  h7i8j9k feat: add proration to BillingCalculator
+  l0m1n2o feat: wire proration into checkout API
+  p3q4r5s test: cover proration edge cases
   ```
 
   **Patterns to follow:**
@@ -188,19 +215,35 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
   - Create: `plugins/compound-engineering/skills/git-stack/SKILL.md`
 
   **Approach:**
-  The frontmatter should include `disable-model-invocation: true` to prevent auto-triggering on ambiguous input like "this PR is too big." The skill is invoked explicitly via `/git-stack` or delegated from `git-commit-push-pr`/shipping workflow. The splitting workflow's internal consent flow (user approves layer proposal) provides the second gate.
+  Model invocation stays enabled. A single consent prompt before running the effectiveness test is sufficient to prevent runaway on ambiguous input like "this PR is too big," and keeps legitimate requests ("can you split this into a stack?") from being blocked by `disable-model-invocation: true`. Manual and delegated entries skip the prompt -- the user has already declared intent.
 
-  The skill has two modes, detected from the user's input:
+  Invocation modes:
+
+  - **Manual** (`/git-stack`): user declared intent -> proceed directly to layer proposal, no entry prompt
+  - **Delegated** (from `git-commit-push-pr` or shipping workflow): caller already ran triage and got user consent. Callers pass a `delegated: true` context signal -> proceed directly, no entry prompt
+  - **Auto-invoked** (model decided to load based on user utterance): run triage first, prompt before proceeding to layer proposal
+
+  Operational modes, detected from the user's input:
 
   - **Split mode** (default): "split this into stacked PRs", "stack my changes", "this PR is too big" -> analyze the current branch and decompose into a stack
-  - **Manage mode**: "push the stack", "submit the stack", "stack status" -> run the corresponding `gh stack` command
+  - **Manage mode**: "push the stack", "submit the stack", "stack status" -> run the corresponding `gh stack` command. Manage mode skips triage and prompting entirely (nothing to decompose)
 
   Structure:
   1. **Pre-resolution**: gh-stack availability check via the sentinel pattern
-  2. **Availability gate**: If `GH_STACK_NOT_INSTALLED`, explain what gh-stack is, offer to install (`gh extension install github/gh-stack`), exit if declined
-  3. **Mode routing**: Parse user intent into split or manage
-  4. **Split mode**: Run `scripts/stack-detect` for change analysis, then load `references/splitting-workflow.md` for the full decomposition workflow
-  5. **Manage mode**: Direct `gh stack` command execution (push, submit, status)
+  2. **Availability gate**: If `GH_STACK_NOT_INSTALLED`, explain what gh-stack is and offer to install it *and run the command for the user* (not just display the command). Pattern: `AskUserQuestion` "Install gh-stack now? [Yes / No]" -> if yes, run `gh extension install github/gh-stack` and inspect exit code. On success, continue into the skill. On failure (network, access denied for private preview, auth), report the error and fall back to single-PR guidance. On decline, exit.
+  3. **Known CLI surface**: SKILL.md includes a brief inline reference listing the commands this skill relies on, grouped by purpose (creation: `init`/`add`/`push`/`submit`; navigation: `checkout`/`bottom`/`top`/`up`/`down`; inspection: `view`; cascade: `rebase`; post-merge: `sync`/`merge`; teardown: `unstack`). Include an explicit instruction: "Before invoking any `gh stack <cmd>`, run `gh stack <cmd> --help` first to verify current flags and behavior. gh-stack is in private preview; flags and output formats may evolve between versions." This prevents the skill from drifting against an evolving CLI and makes the skill self-correcting.
+  4. **Mode routing**: Parse user intent into split or manage
+  5. **Basic state gate (all modes, split-only)**: Before any split-mode workflow, run `scripts/stack-detect` and verify:
+     - On a feature branch (not default / detached HEAD)
+     - Has commits ahead of base
+     If either check fails, exit gracefully with "Nothing to stack -- you are on <branch> with no feature work ahead of <base>." This gate runs for manual, delegated, AND auto-invoked entries because "nothing to stack" is a state problem, not an intent problem -- a user running `/git-stack` on main or an empty branch needs the same graceful error as the auto-invoked case.
+  6. **Effectiveness gate (auto-invoked only)**: Apply the effectiveness test defined in Unit 5 (reading `scripts/stack-detect` output from step 5). Push back when stacking would be ceremony:
+     - Change is a single logical unit (tightly coupled, one concern) -> "This reads as one logical change -- splitting would be ceremony. Ship as a single PR?"
+     - Pure mechanical codemod (rename-only commits dominate) -> "This is mechanical; reviewers skim the whole thing regardless of size. Single PR is faster."
+     - Effectiveness test fails (see Unit 5) -> explain which signals are absent, offer single-PR path
+     Otherwise present a brief layer sketch and ask "Want me to proceed with this split?" Manual and delegated entries skip this gate -- the user or caller has already declared intent.
+  7. **Split mode proposal**: Load `references/splitting-workflow.md` for the full decomposition workflow. Layer proposal still requires user approval before branch creation -- that remains the gate for all modes (the agent's proposed split is a guess; the user confirms before branches are created).
+  8. **Manage mode**: Direct `gh stack` command execution (push, submit, rebase, view, sync). Manage mode skips steps 5-7 entirely -- nothing to decompose.
 
   Cross-platform interaction follows the standard pattern: `AskUserQuestion` with fallback to numbered options.
 
@@ -264,6 +307,8 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
   Include guidance on the "simplify and refactor" opportunity: as the agent constructs each layer, it can clean up code within that layer's scope -- removing dead imports, tightening interfaces, improving naming. This is the value highlighted in the original motivation.
 
+  **CLI verification pattern**: At the top of the workflow, include the same instruction as the git-stack SKILL.md (Unit 3, step 3): before invoking any `gh stack <cmd>`, run `gh stack <cmd> --help` to verify current flags. This reference file invokes `gh stack init`, `gh stack add`, `gh stack push`, `gh stack submit`, and potentially `gh stack rebase` if a layer needs adjustment mid-construction -- each should be verified before use. Duplicate the guidance inline (do not reference git-stack's SKILL.md) since reference files belong to a single skill.
+
   **Rollback protocol**: Before starting stack creation, record the original branch name and HEAD SHA. Complete all local branch construction and verify each layer before running `gh stack push` / `gh stack submit`. If any layer fails during local construction: report which branches were created, provide exact cleanup commands (branch deletion + return to original branch), and offer to abort (restoring original state) or adjust layer boundaries. Separating local construction from remote submission bounds failure blast radius to local state.
 
   **Patterns to follow:**
@@ -308,10 +353,38 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
   **b. Stack-aware routing** (reference file, loaded conditionally): Between Step 5 (Push) and Step 6 (Write PR description), add a routing check:
 
-  - If `GH_STACK_INSTALLED`: first check if the current branch is part of a stack (run `gh stack status` as a shell command -- do not use pre-resolution in the reference file). If in a stack, load `references/stack-aware-workflow.md` which replaces Steps 5-7 with `gh stack push` and `gh stack submit`. If NOT in a stack, check if the change is large (heuristic: 20+ files AND 500+ net lines AND 3+ distinct concerns) and suggest stacking. "This is a substantial change (N files, M lines across K areas). Splitting into stacked PRs makes review faster. Want to split? [Yes / No, ship as one PR]". If yes, load the `git-stack` skill. If no or gh-stack not installed, continue with single PR.
-  - If `GH_STACK_NOT_INSTALLED` and the change triggers the large-change heuristic: mention the option with install path. "This change is large enough to benefit from stacked PRs. Install `gh stack` to enable this: `gh extension install github/gh-stack`". Then continue with single PR.
+  - If `GH_STACK_INSTALLED`: first check if the current branch is part of a stack (run `gh stack view` as a shell command -- do not use pre-resolution in the reference file). If in a stack, load `references/stack-aware-workflow.md` which replaces Steps 5-7 with `gh stack push` and `gh stack submit`. If NOT in a stack, apply the two-stage stacking check below.
+  - If `GH_STACK_NOT_INSTALLED` and the stage-1 hint fires: offer to install *and run the command for the user*, not just print it. Pattern: "This change is large enough that stacked PRs could speed up review. Want me to install gh-stack now? [Yes, install / No, ship as single PR]". If yes, run `gh extension install github/gh-stack` and inspect exit code. On success, run the effectiveness test (stage 2) and continue. On failure or decline, continue with single PR. Only offer install once per session; if the user declined earlier, don't re-ask.
+
+  **Two-stage stacking check** (evidence-based, replaces the prior files+lines+concerns AND-gate):
+
+  *Stage 1 -- size/spread hint (cheap, mechanical).* Trigger the effectiveness test only if the change is big enough that decomposition is plausibly worth the overhead. Pass if either:
+  - Net diff > ~400 LOC (supported by SmartBear/Cisco 2006 and Rigby & Bird 2013 empirical data -- review defect detection degrades sharply above this range), OR
+  - Diff crosses > 2 top-level subsystem boundaries (spread proxy)
+
+  Small changes skip straight to single PR with no prompt and no noise.
+
+  *Stage 2 -- effectiveness test (model reasoning over the diff and commit log).* Suggest stacking only if at least two of the following hold:
+  1. **Independence**: at least one commit or commit range is reviewable, mergeable, and revertable without the rest (e.g., a refactor that stands alone before the feature that uses it)
+  2. **Reviewer divergence**: distinct parts of the change have different natural reviewers or risk profiles (e.g., infra migration + product feature; security-sensitive + routine)
+  3. **Sequencing value**: staged landing reduces blast radius or unblocks parallel work
+  4. **Mixed kinds**: mechanical change (rename, move, codemod) bundled with semantic change -- isolating the mechanical part dramatically reduces review load
+
+  *Anti-patterns -- do NOT suggest stacking even when stage 1 passes:*
+  - Single logical change with tightly coupled commits (diff 1 doesn't compile/pass tests without diff 2)
+  - Pure mechanical codemod (rename-only, import shuffle) -- reviewers skim the whole thing regardless of size. Detect via `renames_only_commits` dominating the commit count
+  - Hotfix or time-critical change where merge-queue latency dominates
+  - Short-lived exploratory work likely to be squashed
+
+  *Messaging when the test passes:* "This change has N independently reviewable layers (one-sentence description of each). Splitting would let reviewer X land the refactor while you iterate on the feature. Want to split? [Yes / No, ship as one PR]"
+
+  *When stage 1 passes but stage 2 fails:* skip the prompt entirely -- asking would be ceremony.
+
+  Rationale: files + lines + concerns is a weak proxy. Empirical data (SmartBear/Cisco 2006; Rigby & Bird 2013) supports size as an upper bound on review quality but not as a stacking trigger. Practitioners (Graphite, ghstack/Meta, Google, Aviator) consistently cite independence, reviewer divergence, and sequencing as the actual signals.
 
   Keep the SKILL.md changes minimal -- the pre-resolution line and a ~5-line routing stub that loads the reference file. All stack-aware logic lives in the reference file per the extraction threshold learning.
+
+  **CLI verification pattern in the reference file**: The stack-aware workflow invokes `gh stack view` (stack-state check), `gh stack push`, and `gh stack submit`. Include the same instruction as the git-stack SKILL.md (Unit 3, step 3): before invoking any `gh stack <cmd>`, run `gh stack <cmd> --help` to verify current flags. Inline the guidance (reference files cannot point across skill boundaries).
 
   **Patterns to follow:**
   - Existing pre-resolution block in `git-commit-push-pr/SKILL.md`
@@ -320,16 +393,19 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
   **Test scenarios:**
   - Happy path: gh-stack installed, on a stack branch, changes to push -> uses `gh stack push` + `gh stack submit` instead of `git push` + `gh pr create`
-  - Happy path: gh-stack installed, large change, user opts to stack -> loads git-stack skill
-  - Happy path: gh-stack installed, small change -> no suggestion, normal single-PR flow
-  - Happy path: gh-stack not installed, large change -> mentions gh-stack with install command, continues with single PR
+  - Happy path: gh-stack installed, change passes stage 1 AND stage 2, user opts to stack -> loads git-stack skill with `delegated: true` context
+  - Happy path: gh-stack installed, change passes stage 1 but fails stage 2 (e.g., rename-only codemod) -> no prompt, normal single-PR flow
+  - Happy path: gh-stack installed, small change (stage 1 fails) -> no suggestion, normal single-PR flow
+  - Happy path: gh-stack not installed, change passes stage 1 -> passive mention with install command, continues with single PR
   - Happy path: gh-stack not installed, small change -> no mention, normal flow
   - Edge case: already on a stack but changes are only to the current layer -> `gh stack push` for current layer only
   - Edge case: description-only update mode -> skip stack detection entirely (no changes to push)
   - Edge case: detached HEAD + gh-stack installed -> skip stack detection, defer to existing detached HEAD handling
-  - Edge case: default branch + gh-stack installed + large change -> skip stack suggestion (must create feature branch first; stacking decision happens after)
+  - Edge case: default branch + gh-stack installed + change passes stage 1 -> skip stack suggestion (must create feature branch first; stacking decision happens after)
   - Edge case: stack branch with no upstream -> verify `gh stack push` handles initial push
   - Edge case: shipping workflow passed "stacking_declined" context -> skip stacking suggestion entirely
+  - Edge case: large pure codemod (rename-only commits dominate) -> stage 2 anti-pattern detected, no prompt
+  - Edge case: tightly coupled changes that don't compile independently -> stage 2 anti-pattern detected, no prompt
 
   **Verification:**
   - Pre-resolution sentinel resolves correctly in both installed and uninstalled states
@@ -355,10 +431,12 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
   Add a stacking decision point at the beginning of Phase 4 "Ship It", before step 1 (Prepare Evidence Context). The decision point:
 
   1. Inline a lightweight stacking pre-check (do not reference git-stack's scripts -- cross-skill file references are prohibited). The inline check runs: (a) `gh extension list 2>/dev/null | grep -q gh-stack` for installation, and (b) `git diff --stat <base>..HEAD` for change size. The full `stack-detect` analysis runs inside the git-stack skill after the user opts in.
-  2. If `GH_STACK_INSTALLED` and the completed work is substantial (same heuristic as Unit 5: 20+ files AND 500+ lines AND 3+ distinct concerns), ask: "This change spans N files across K areas. Ship as a single PR or split into stacked PRs for easier review?"
-     - **Single PR**: Continue with existing Phase 4 flow (load `git-commit-push-pr`)
-     - **Stacked PRs**: Load the `git-stack` skill instead. Pass the plan summary as context so the splitting workflow can use it to inform layer boundaries.
-  3. If `GH_STACK_NOT_INSTALLED`, skip the check entirely (no noise for developers without gh-stack)
+  2. If `GH_STACK_INSTALLED`, apply the two-stage stacking check from Unit 5 (stage 1 = size/spread hint: > ~400 LOC OR > 2 subsystem boundaries; stage 2 = effectiveness test requiring >= 2 of independence / reviewer divergence / sequencing value / mixed kinds, with anti-pattern exclusions). If both stages pass, ask: "This change has N independently reviewable layers (brief description of each). Ship as a single PR or split into stacked PRs for easier review?"
+     - **Single PR**: Continue with existing Phase 4 flow (load `git-commit-push-pr` with `stacking_declined: true` so it doesn't re-ask)
+     - **Stacked PRs**: Load the `git-stack` skill with `delegated: true`. Pass the plan summary as context so the splitting workflow can use plan units as candidate layer boundaries.
+
+     Heuristic and messaging MUST match Unit 5 verbatim. If stage 1 fails, or stage 1 passes but stage 2 fails, skip the prompt entirely -- no noise, proceed directly to single-PR flow.
+  3. If `GH_STACK_NOT_INSTALLED`: still run the stage-1 hint (purely mechanical, needs only `git diff --stat`). If stage 1 passes, offer to install *and run the command for the user*: "This change is substantial enough that stacked PRs could speed up review. Want me to install gh-stack now? [Yes, install / No, ship as single PR]". If yes, run `gh extension install github/gh-stack`, inspect exit code, then re-evaluate (run stage 2 effectiveness test + ask to stack on pass). If install fails, decline, or stage 1 fails: silent proceed to single PR. Only offer install once per session.
 
   Both ce-work and ce-work-beta share identical shipping workflows, so the same change applies to both files. The stacking heuristic and messaging must remain consistent across all three locations: (1) `git-commit-push-pr/references/stack-aware-workflow.md`, (2) `ce-work/references/shipping-workflow.md`, (3) `ce-work-beta/references/shipping-workflow.md`. Add a sync-obligation comment at the top of the stacking section in each file listing the other two locations.
 
@@ -383,20 +461,168 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
 ---
 
-- [ ] **Unit 7: Plugin README and validation**
+- [ ] **Unit 7: resolve-pr-feedback -- Stack-aware handling**
+
+  **Goal:** When review feedback arrives on a PR that is part of a stack, identify the correct layer to apply the fix to, cascade through dependent layers via `gh stack rebase`, push the updated stack, and reply on the correct PR (noting where the fix actually landed if different from the commented PR).
+
+  **Requirements:** R8 (new -- see Requirements Trace update)
+
+  **Dependencies:** Unit 2 (stack-detect signals), Unit 3 (git-stack CLI knowledge / command inventory pattern)
+
+  **Files:**
+  - Modify: `plugins/compound-engineering/skills/resolve-pr-feedback/SKILL.md` (pre-resolution + routing only; keep minimal)
+  - Create: `plugins/compound-engineering/skills/resolve-pr-feedback/references/stack-aware-feedback.md` (full workflow, conditionally loaded)
+
+  **Approach:**
+
+  Two additions to the skill:
+
+  **a. Pre-resolution addition** (SKILL.md, ~4 lines):
+  ```
+  **gh-stack status:**
+  !`gh extension list 2>/dev/null | grep -q gh-stack && echo "GH_STACK_INSTALLED" || echo "GH_STACK_NOT_INSTALLED"`
+  **Stack membership (requires gh-stack):**
+  !`gh stack view 2>/dev/null | head -1 || echo "NOT_IN_STACK"`
+  ```
+
+  **b. Stack-aware routing** (SKILL.md, ~5-line stub): After resolving which PR's feedback to address and before applying fixes, check:
+  - If `GH_STACK_NOT_INSTALLED` or branch is not in a stack -> existing flow unchanged
+  - If in a stack -> load `references/stack-aware-feedback.md` and follow the stack-aware workflow below
+
+  **Stack-aware workflow (reference file):**
+
+  1. **Parse feedback targets**: For each comment being addressed, identify the file path and line range under discussion (existing resolve-pr-feedback logic already extracts this).
+
+  2. **Identify owning layer** (the one nontrivial step): Use `git blame -L <start>,<end> -- <file>` scoped to the stack's branches to find which layer's commits introduced the lines under discussion. Cross-reference against `gh stack view` output to map commits to layer branch names.
+     - If blame points to a single layer -> that's the owning layer
+     - If blame points to multiple layers (code touched by several) -> ask the user which layer to fix in, defaulting to the earliest (most upstream) layer
+     - If blame points to a commit outside the stack (e.g., the base branch) -> fall back to non-stack flow, treat as normal PR feedback
+
+  3. **Navigate and fix**: `gh stack checkout <owning-layer>`, then apply the fix using existing resolve-pr-feedback logic (the content of the fix is not stack-specific).
+
+  4. **Commit** with a conventional message referencing the review (e.g., `fix: address review feedback on <aspect>`).
+
+  5. **Cascade**: Run `gh stack rebase` (follow the `--help`-first verification pattern established in Unit 3). Documented behavior: cascading rebase across the stack, ensuring each branch has the tip of the previous layer in its commit history.
+     - If rebase succeeds cleanly -> proceed to push
+     - If rebase conflicts -> halt, report which layer conflicted, provide manual resolution guidance (`gh stack rebase --continue` / `--abort`), exit. The user completes resolution and re-runs or takes over manually.
+
+  6. **Push**: `gh stack push` (uses `--force-with-lease` to safely update rebased branches).
+
+  7. **Reply on the correct PR**: Post the reply to the *original commented PR* (not the owning layer's PR if they differ). If the fix landed on a different layer, include a short note in the reply: "Fixed in the `<layer-name>` layer (PR #NNNN), which owns this code in the stack."
+
+  **V1 scope constraints:**
+  - Single review comment -> single layer fix. Multi-comment batches where different comments belong to different layers run the workflow per-comment.
+  - Multi-layer fixes (one comment requires changes in multiple layers) are **deferred to V2** -- V1 detects this case (blame spans multiple layers AND the user declines the default) and prompts the user to handle manually.
+  - Conflicts during rebase -> hand off to the user. V1 does not attempt automated conflict resolution.
+
+  **CLI verification pattern in the reference file**: The stack-aware workflow invokes `gh stack view`, `gh stack checkout`, `gh stack rebase`, and `gh stack push`. Include the same instruction as the git-stack SKILL.md (Unit 3, step 3): before invoking any `gh stack <cmd>`, run `gh stack <cmd> --help` to verify current flags. Inline the guidance (reference files cannot point across skill boundaries).
+
+  **Patterns to follow:**
+  - Existing pre-resolution block in `git-commit-push-pr/SKILL.md`
+  - Stack-aware-workflow reference pattern from Unit 5
+  - Existing resolve-pr-feedback comment-parsing and fix-application flow
+
+  **Test scenarios:**
+  - Happy path: PR is part of a stack, fix belongs in the commented layer -> apply fix on that layer, rebase, push, reply on same PR
+  - Happy path: PR is part of a stack, fix belongs in an earlier layer -> checkout earlier layer, apply fix, rebase cascades to later layers, push, reply on the original PR with owning-layer reference
+  - Happy path: gh-stack installed, PR not in a stack -> existing non-stack flow
+  - Happy path: gh-stack not installed -> existing non-stack flow (no behavioral change)
+  - Edge case: blame ambiguous (code touched by multiple layers) -> prompt user to choose, default to earliest layer
+  - Edge case: blame points outside stack (e.g., base branch) -> fall back to non-stack flow
+  - Edge case: rebase conflicts during cascade -> halt with guidance, don't push
+  - Edge case: push fails (force-with-lease rejected due to remote changes) -> advise `gh stack sync` first, exit
+  - Edge case: multi-layer fix scenario -> detect, prompt user to handle manually, don't attempt automated multi-layer
+  - Edge case: PR is top of stack with no dependent layers above -> rebase is a no-op, push happens normally
+  - Edge case: owning layer is already merged and removed from stack -> fall back to applying fix on the current (commented) layer with a note
+  - Edge case: remote stack state has diverged (upstream changes to other layers landed while user was working on feedback) -> `gh stack rebase` pulls from remote as part of its documented behavior, which incorporates those upstream changes into the cascade. If the remote divergence introduces conflicts or pulls in content the user did not expect, halt before pushing and explain what changed. Do NOT silently push surprise content on the user's behalf.
+
+  **Verification:**
+  - Pre-resolution sentinels resolve correctly for (installed, in-stack), (installed, not-in-stack), (not-installed)
+  - Non-stack feedback flow is unaffected -- behavioral-regression gate
+  - Reference file loads only when both gh-stack is installed AND the branch is in a stack
+  - Frontmatter still parses correctly
+
+---
+
+- [ ] **Unit 8: ce:plan -- Stack-candidacy assessment at plan-output time**
+
+  **Goal:** When `ce:plan` produces a plan, assess whether the planned implementation units warrant stacked PRs. Surface a recommendation in the plan output when warranted, and offer to install `gh stack` if not already present. Move stacking awareness upstream so developers know at plan time (not just at ship time) whether the work is stackable.
+
+  **Requirements:** R9
+
+  **Dependencies:** None (uses the effectiveness test defined in Unit 5 but does not depend on Unit 5's implementation -- the heuristic is described in this plan and can be inlined independently)
+
+  **Files:**
+  - Modify: `plugins/compound-engineering/skills/ce-plan/SKILL.md` (or the plan-output reference file, whichever owns the final plan-emission step -- implementer should grep for where the Implementation Units section is rendered to locate the right file)
+
+  **Approach:**
+
+  At the end of plan generation, after all Implementation Units have been produced, apply the same two-stage effectiveness test from Unit 5 -- but against the **plan units** instead of a diff:
+
+  *Stage 1 -- plan-level spread hint (mechanical).* Pass if either:
+  - Plan has >= 3 implementation units AND units touch >2 top-level subsystem boundaries (infer from each unit's `Files:` block by extracting top-level directory prefixes), OR
+  - Plan spans >2 distinct skills/agents/components (surfaced by looking at which top-level areas the units modify)
+
+  *Stage 2 -- effectiveness test on plan structure.* Stack recommendation fires only if at least two of the following hold when reading the plan:
+  1. **Independence**: at least one unit has `Dependencies: None` or forms a linear chain (unit N depends only on unit N-1), indicating it could land and be reviewed independently
+  2. **Reviewer divergence**: different units touch subsystems with clearly different risk profiles (e.g., migration vs product feature, infra vs UI, security-sensitive vs routine)
+  3. **Sequencing value**: the plan's narrative describes staged landing (refactor first, then feature, then cleanup; or: data layer first, then API, then client)
+  4. **Mixed kinds**: the plan mixes mechanical units (renames, moves, codemods, infrastructure) with semantic units (new logic, behavior changes)
+
+  *Output behavior:*
+
+  - **Test passes AND `GH_STACK_INSTALLED`**: Append a short "Stacking recommendation" section to the plan output: "This plan has N independently-reviewable units that map well to stacked PRs. Consider shipping one unit per stack layer. When `ce-work` reaches Phase 4, you will be offered this automatically." Include a brief note mapping candidate layer groupings to unit numbers.
+  - **Test passes AND `GH_STACK_NOT_INSTALLED`**: Append the same recommendation AND offer to install (same pattern as Units 3/5/6): "This plan would benefit from stacked PRs. Want me to install gh-stack now? [Yes, install / No, skip]." On yes, run `gh extension install github/gh-stack`. On success, confirm in plan output. On failure or decline, fall back silently (plan still includes the recommendation text without install confirmation). Honor the `gh_stack_install_declined` session signal -- skip the offer if set.
+  - **Test fails**: Silent. No stacking-related output. No noise on plans that do not warrant stacking (small plans, tightly-coupled work, single-concern changes).
+
+  **Stale-recommendation cleanup on replan / deepening**: When `ce:plan` regenerates a plan that previously contained a "Stacking recommendation" section, the assessment runs fresh on the revised unit structure. Three cases:
+  - Test passes AND prior recommendation existed -> replace the prior recommendation section (layer groupings and unit mapping may have changed)
+  - Test passes AND no prior recommendation -> append a new recommendation section
+  - **Test fails AND prior recommendation existed -> remove the stale recommendation section entirely**. Do not leave an orphan recommendation that no longer matches the plan (e.g., prior plan had 5 independent units, deepened plan has 3 tightly-coupled ones -> the recommendation is no longer true).
+
+  Implementation: detect the recommendation section by its header (e.g., `## Stacking Recommendation`). Grep for it before re-emitting the plan, and remove/replace accordingly.
+
+  **Consistency obligation**: The heuristic prose and messaging MUST stay synchronized across Units 5, 6, and 8. Sync-obligation comment at the top of the stacking section in each file lists all four locations (Unit 5's reference, Unit 6's two shipping workflows, Unit 8's ce:plan output step).
+
+  **Patterns to follow:**
+  - Effectiveness test definition from Unit 5's approach section
+  - Install-offer pattern from Unit 3's availability gate and Unit 5's fallback path
+  - ce:plan's existing plan-output rendering (locate via grep for where Implementation Units section is written)
+
+  **Test scenarios:**
+  - Happy path: plan with 5 independent units across 3 subsystems, `gh-stack` installed -> output includes stacking recommendation with unit-to-layer mapping
+  - Happy path: same plan but `gh-stack` not installed -> output includes recommendation AND install offer; if accepted, install runs and confirmation appended
+  - Happy path: plan with 5 independent units, install declined -> recommendation included, no install noise, `gh_stack_install_declined` signal set for rest of session
+  - Happy path: plan with 2 tightly-coupled units -> no stacking output (stage 2 fails)
+  - Happy path: plan with 1 unit -> no stacking output (stage 1 fails)
+  - Edge case: plan unit `Files:` blocks are empty or missing -> fall back to unit count + unit titles as spread signal; if signal is too weak, skip recommendation rather than making up data
+  - Edge case: plan is a revision/deepening of an existing plan -> apply assessment to the revised unit structure; if a prior version already had a recommendation, do not re-offer install if `gh_stack_install_declined` is set
+  - Edge case: `ce:plan` is invoked in a context where it cannot run shell commands (offline / permission-denied) -> skip the install offer, still include the recommendation text
+
+  **Verification:**
+  - Plans that do not warrant stacking show no stacking-related output (behavioral-regression gate)
+  - Recommendation messaging matches Unit 5 verbatim where the text overlaps
+  - Install offer honors `gh_stack_install_declined` signal across invocations
+  - Plan output remains readable and well-formatted with the recommendation appended
+
+---
+
+- [ ] **Unit 9: Plugin README and validation**
 
   **Goal:** Update the plugin README to document the new git-stack skill and run release validation.
 
   **Requirements:** None (documentation housekeeping)
 
-  **Dependencies:** Units 1-6
+  **Dependencies:** Units 1-8
 
   **Files:**
   - Modify: `plugins/compound-engineering/README.md`
 
   **Approach:**
-  - Add `git-stack` to the appropriate category table in the README (Git Workflow section alongside git-commit, git-commit-push-pr, git-worktree, git-clean-gone-branches)
+  - Add `git-stack` to the Git Workflow section alongside git-commit, git-commit-push-pr, git-worktree, git-clean-gone-branches
   - Update the skill count in the plugin description
+  - Note in the `resolve-pr-feedback` README entry that stack-aware handling is included (activates when the PR is part of a gh-stack stack)
+  - Note in the `ce:plan` README entry that stack-candidacy assessment is included (activates when the produced plan's implementation units warrant stacking)
   - Run `bun run release:validate` to verify plugin/marketplace consistency
   - Run `bun test tests/frontmatter.test.ts` to verify all YAML frontmatter parses correctly
 
@@ -414,20 +640,21 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 
 ## System-Wide Impact
 
-- **Interaction graph:** The new `git-stack` skill is invoked from two entry points: directly by the user, or delegated from `git-commit-push-pr` / shipping workflow. It does not call back into those skills -- the relationship is one-directional. `ce-setup` is independent (discovery-time only).
-- **Error propagation:** If `gh stack` commands fail (network, access, conflict), the git-stack skill handles the error locally and offers fallback to single-PR workflow. Errors do not propagate to calling skills.
+- **Interaction graph:** The new `git-stack` skill is invoked from two entry points: directly by the user, or delegated from `git-commit-push-pr` / shipping workflow. It does not call back into those skills -- the relationship is one-directional. `ce-setup` is independent (discovery-time only). `resolve-pr-feedback` (Unit 7) is a fourth entry point for `gh stack` invocations but does not delegate to `git-stack` -- it calls `gh stack` commands directly since the workflow is feedback-specific (checkout + rebase + push), not decomposition.
+- **Error propagation:** If `gh stack` commands fail (network, access, conflict), the invoking skill handles the error locally and offers fallback: `git-stack` falls back to single-PR workflow, `resolve-pr-feedback` falls back to single-layer-only handling or manual hand-off. Errors do not propagate across skills.
 - **State lifecycle risks:** Stack creation involves multiple branch operations. If the process fails mid-stack (e.g., conflict on layer 3 of 4), the partially created stack branches remain. The skill should report what was created and offer cleanup guidance.
 - **API surface parity:** The stacking suggestion appears in both `git-commit-push-pr` (direct invocation) and shipping workflow (ce-work invocation). The heuristic and messaging should be consistent across both entry points.
-- **Double-suggestion prevention:** When the shipping workflow (Unit 6) asks about stacking and the user declines, the subsequent `git-commit-push-pr` load must not re-ask. The shipping workflow should pass a "stacking_declined" context signal when loading `git-commit-push-pr`, and the stack-aware routing in Unit 5 should skip the suggestion when this signal is present.
+- **Prior-decision respect (consolidates previous double-suggestion and install-dedup rules):** Per the governing principle in Key Technical Decisions ("Respect prior user decisions about stacking within the session"), any stacking-related decision the user has already made earlier in the session -- declined stacking, declined install, approved a split, adjusted a layer proposal -- is honored by all subsequent skills without re-prompting. Agent context awareness is the primary mechanism; structured signals (`stacking_declined`, `gh_stack_install_declined`) are secondary and used at explicit delegation boundaries (e.g., shipping workflow -> git-commit-push-pr). Individual units do not need to re-specify signal-check logic; they defer to this principle. Re-prompting is only appropriate when circumstances have changed materially (e.g., diff has grown substantially since the prior decline).
+- **Heuristic sync across four locations:** The two-stage effectiveness test appears in Unit 5 (git-commit-push-pr stack-aware reference), Unit 6 (ce-work shipping workflow, both ce-work and ce-work-beta copies), and Unit 8 (ce:plan). The test's prose and messaging must stay synchronized. Sync-obligation comment at the top of the stacking section in each file enumerates all four locations. When changing the heuristic, update all four atomically.
 - **Unchanged invariants:** The existing single-PR workflow in `git-commit-push-pr` is unaffected. The stacking option is purely additive -- it only activates when gh-stack is installed AND the user opts in. Non-stacking invocations pay only the cost of one pre-resolution line.
 
 ## Risks & Dependencies
 
 | Risk | Mitigation |
 |------|------------|
-| gh-stack is in private preview -- developers may install it but lack access | Runtime `gh stack status` check after installation check. Clear error message with link to request access. Pin to a specific extension version via `gh extension install github/gh-stack --pin <tag>` when a stable tag exists. |
+| gh-stack is in private preview -- developers may install it but lack access | Runtime `gh stack view` check after installation check. Clear error message with link to request access. Pin to a specific extension version via `gh extension install github/gh-stack --pin <tag>` when a stable tag exists. |
 | Partial stack creation failure (conflict or error mid-stack) | Report what was created, offer cleanup guidance, preserve original branch as fallback |
-| Large-change heuristic is too aggressive (suggests stacking on every PR) | Start conservative (20+ files AND 500+ lines AND 3+ concerns). Tune based on feedback. All three conditions must be met. |
+| Stacking suggestion too aggressive (noise on every large PR) | Two-stage check: stage-1 size hint (> ~400 LOC or > 2 subsystems) only triggers the effectiveness test; stage-2 effectiveness test (>= 2 of independence / reviewer divergence / sequencing value / mixed kinds) suppresses suggestions on mechanical codemods, single logical changes, and hotfixes. Anti-patterns enumerated in Unit 5. |
 | Cross-skill file reference constraint prevents sharing stack-detect script | Inline lightweight detection in shipping workflow; full analysis runs inside git-stack skill |
 | gh-stack CLI interface changes during private preview | Use `gh stack` (full form) everywhere, not `gs` alias. Centralize all `gh stack` command invocations in `references/splitting-workflow.md` so CLI changes require a single-file update. Verify commands via `--help` before implementing. |
 | No automated test coverage for stack-dependent code paths | `stack-detect` script supports `--mock` flag to simulate gh-stack states for testing. Add contract tests verifying pre-resolution sentinels produce valid output. |
@@ -440,3 +667,16 @@ GitHub's `gh stack` extension (currently in private preview) enables stacked PRs
 - Related learnings: `docs/solutions/best-practices/codex-delegation-best-practices-2026-04-01.md`
 - Related learnings: `docs/solutions/skill-design/script-first-skill-architecture.md`
 - Related learnings: `docs/solutions/skill-design/beta-promotion-orchestration-contract.md`
+
+### Stacking-heuristic research (Units 5/6)
+
+- SmartBear/Cisco code review study (2006) -- review defect detection degrades sharply above ~200-400 LOC
+- Rigby & Bird, "Convergent Contemporary Code Review" (FSE 2013) -- review quality inflection around reviewer time budget (~60 min), loosely correlating with LOC
+- Sadowski et al., "Modern Code Review at Google" (ICSE SEIP 2018) -- Google's median CL is ~24 lines; large CLs get measurably lower comment density
+- Edward Yang, ghstack docs (github.com/ezyang/ghstack) -- "smallest coherent reviewable unit" as the stacking primitive
+- Jackson Gabbard, "Stacked Diffs vs. Pull Requests" (jg.gg) -- Meta's cultural framing of stacking as default, not special-case
+- Graphite blog: graphite.dev/blog/stacked-prs, /when-to-stack -- independent reviewability with sequential dependency
+- Aviator blog: aviator.co/blog/stacked-prs -- reviewer divergence, blocking, staged rollout as triggers
+- Gergely Orosz, Pragmatic Engineer -- review latency and rollback granularity over LOC
+- Will Larson, lethain.com -- splitting when different parts need different reviewers or risk tolerance
+- DHH / 37signals -- counter-evidence for trunk-based with feature flags as an alternative to stacking ceremony

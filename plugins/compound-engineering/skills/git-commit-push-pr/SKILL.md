@@ -19,7 +19,7 @@ For description-only updates, follow the Description Update workflow below. Othe
 
 **If you are not Claude Code**, skip to the "Context fallback" section below and run the command there to gather context.
 
-**If you are Claude Code**, the six labeled sections below contain pre-populated data. Use them directly -- do not re-run these commands.
+**If you are Claude Code**, the seven labeled sections below contain pre-populated data. Use them directly -- do not re-run these commands.
 
 **Git status:**
 !`git status`
@@ -39,6 +39,9 @@ For description-only updates, follow the Description Update workflow below. Othe
 **Existing PR check:**
 !`gh pr view --json url,title,state 2>/dev/null || echo 'NO_OPEN_PR'`
 
+**gh-stack availability:**
+!`gh extension list 2>/dev/null | grep -q gh-stack && echo "GH_STACK_INSTALLED" || echo "GH_STACK_NOT_INSTALLED"`
+
 ### Context fallback
 
 **If you are Claude Code, skip this section — the data above is already available.**
@@ -46,7 +49,7 @@ For description-only updates, follow the Description Update workflow below. Othe
 Run this single command to gather all context:
 
 ```bash
-printf '=== STATUS ===\n'; git status; printf '\n=== DIFF ===\n'; git diff HEAD; printf '\n=== BRANCH ===\n'; git branch --show-current; printf '\n=== LOG ===\n'; git log --oneline -10; printf '\n=== DEFAULT_BRANCH ===\n'; git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo 'DEFAULT_BRANCH_UNRESOLVED'; printf '\n=== PR_CHECK ===\n'; gh pr view --json url,title,state 2>/dev/null || echo 'NO_OPEN_PR'
+printf '=== STATUS ===\n'; git status; printf '\n=== DIFF ===\n'; git diff HEAD; printf '\n=== BRANCH ===\n'; git branch --show-current; printf '\n=== LOG ===\n'; git log --oneline -10; printf '\n=== DEFAULT_BRANCH ===\n'; git rev-parse --abbrev-ref origin/HEAD 2>/dev/null || echo 'DEFAULT_BRANCH_UNRESOLVED'; printf '\n=== PR_CHECK ===\n'; gh pr view --json url,title,state 2>/dev/null || echo 'NO_OPEN_PR'; printf '\n=== GH_STACK ===\n'; gh extension list 2>/dev/null | grep -q gh-stack && echo "GH_STACK_INSTALLED" || echo "GH_STACK_NOT_INSTALLED"
 ```
 
 ---
@@ -151,11 +154,17 @@ If the PR check returned `state: OPEN`, note the URL -- continue to Step 4 and 5
    )"
    ```
 
-### Step 5: Push
+### Step 5: Push and stack-aware routing
+
+Before pushing, check the `gh-stack availability` value from context and the current branch's stack membership. If `GH_STACK_INSTALLED`, or if the change is substantial enough that stacking could help, load `references/stack-aware-workflow.md` to route through one of four cases (in-stack ship, not-in-stack suggestion, offer-to-install, or monolithic). The reference file owns push, submit, per-PR description, and the stacking heuristic.
+
+If the reference file handles the ship end-to-end (Cases 1-3 on their stacked paths), skip the remaining steps of this skill — the reference file reports the PR URLs itself. Otherwise, fall through to the monolithic path:
 
 ```bash
 git push -u origin HEAD
 ```
+
+Then continue to Step 6.
 
 ### Step 6: Generate the PR title and body
 

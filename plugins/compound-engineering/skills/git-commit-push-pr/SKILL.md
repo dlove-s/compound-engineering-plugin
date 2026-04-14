@@ -118,7 +118,7 @@ If the working tree is clean (no staged, modified, or untracked files), determin
 
 Decision tree:
 
-- **On default branch, no unpushed commits** -- ask whether to create a feature branch (pushing default directly is not supported). If yes, create and continue from Step 5. If no, stop.
+- **On default branch, unpushed commits or no upstream** -- ask whether to create a feature branch (pushing default directly is not supported). If yes, create and continue from Step 5. If no, stop.
 - **On default branch, all pushed, no open PR** -- report no feature branch work. Stop.
 - **Feature branch, no upstream** -- skip Step 4, continue from Step 5.
 - **Feature branch, unpushed commits** -- skip Step 4, continue from Step 5.

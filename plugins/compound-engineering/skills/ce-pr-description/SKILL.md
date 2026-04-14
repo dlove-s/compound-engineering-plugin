@@ -1,6 +1,7 @@
 ---
 name: ce-pr-description
-description: "Generate a value-first PR title and body for a GitHub pull request or arbitrary diff range, returning structured {title, body} output. Accepts either pr:<number> (existing PR) or range:<base>..<head> (pre-PR or dry-run), plus an optional focus hint. Used by git-commit-push-pr (single-PR flow) and ce-pr-stack (per-layer stack descriptions); occasionally invoked directly when only a description rewrite is wanted. Does NOT apply the description — the caller decides whether and when to edit."
+description: "Write or regenerate a value-first pull-request description (title + body) from an existing PR or a diff range. Use when the user says 'write a PR description', 'refresh the PR description', 'regenerate the PR body', 'rewrite this PR', 'freshen the PR', 'update the PR description', 'draft a PR body for this diff', 'describe this PR properly', 'generate the PR title', or wants a well-framed PR description without the full commit-and-push ceremony. Also used internally by git-commit-push-pr (single-PR flow) and ce-pr-stack (per-layer stack descriptions) so all callers share one writing voice. Accepts pr:<number> (existing open PR) or range:<base>..<head> (pre-PR or dry-run), plus an optional focus:<hint>. Returns structured {title, body} for the caller to apply via gh pr edit or gh pr create — this skill never edits the PR itself and never prompts for confirmation."
+argument-hint: "[pr:<number> | range:<base>..<head>] [focus:<hint>] — pr: reads an existing open PR, range: works from any diff (fork PRs and non-local base refs handled automatically), focus: optional steering hint"
 ---
 
 # CE PR Description
@@ -55,39 +56,73 @@ gh pr view <number> --json number,state,title,body,baseRefName,headRefName,headR
 
 If the returned `state` is not `OPEN`, report "PR <number> is <state> (not open); cannot regenerate description" and exit gracefully without output. Callers expecting `{title, body}` must handle this empty case.
 
-Resolve the base remote and base branch from the PR metadata. Fall back to `origin` as the remote when match detection is ambiguous. Derive the diff range as `<base-remote>/<baseRefName>...<headRefName>`.
+Resolve the base remote from the PR metadata (the base repository's remote in the local clone — fall back to `origin` when ambiguous). Do not assume a local branch matching `headRefName` exists: the PR may come from a fork, the local branch may have been deleted, the clone may not have fetched it, or the user may be running the skill from a different branch. Resolve the PR's head commit via the **`refs/pull/<number>/head`** ref, which GitHub makes available on every PR regardless of source repository.
 
-Verify the base remote-tracking ref exists; fetch if needed:
+Fetch both the base ref (in case it isn't local yet) and the PR head ref in one step:
 
 ```bash
-git rev-parse --verify <base-remote>/<baseRefName> 2>/dev/null || git fetch --no-tags <base-remote> <baseRefName>
+git fetch --no-tags <base-remote> <baseRefName> "refs/pull/<number>/head"
 ```
 
-Gather merge base, commit list, and full diff:
+The PR head SHA is then available as `FETCH_HEAD`. Capture it into a variable before running any subsequent git commands so later invocations of `git fetch` do not overwrite it:
 
 ```bash
-MERGE_BASE=$(git merge-base <base-remote>/<baseRefName> <headRefName>) && echo "MERGE_BASE=$MERGE_BASE" && echo '=== COMMITS ===' && git log --oneline $MERGE_BASE..<headRefName> && echo '=== DIFF ===' && git diff $MERGE_BASE...<headRefName>
+PR_HEAD_SHA=$(git rev-parse FETCH_HEAD)
+```
+
+Alternative path when `refs/pull/<number>/head` is unavailable (some ghes configurations or non-GitHub remotes): read the last commit SHA from the `commits` array returned by `gh pr view`'s `--json commits` output and use that SHA directly — no fetch needed because `gh` surfaces the SHA from the API even when the commit isn't local. Note that subsequent `git merge-base`/`git log`/`git diff` calls then require the commit to be fetched: `git fetch --no-tags <base-remote> <PR_HEAD_SHA>` is idempotent when the commit is already local.
+
+Gather merge base, commit list, and full diff using the resolved SHA (not `headRefName`):
+
+```bash
+MERGE_BASE=$(git merge-base <base-remote>/<baseRefName> $PR_HEAD_SHA) && echo "MERGE_BASE=$MERGE_BASE" && echo '=== COMMITS ===' && git log --oneline $MERGE_BASE..$PR_HEAD_SHA && echo '=== DIFF ===' && git diff $MERGE_BASE...$PR_HEAD_SHA
 ```
 
 Also capture the existing PR body for evidence preservation in Step 3.
 
 ### If input is `range: <base>..<head>`
 
-Validate both endpoints resolve:
+Resolve both endpoints, **fetching the base ref on demand** before validating. This is important because callers often pass remote-tracking refs (`origin/main`, `origin/develop`) or branch names that may not be present in the local clone — particularly after a fresh clone, after the local branch was deleted, or when targeting a non-default base. The pre-refactor behavior in `git-commit-push-pr` fetched on demand; preserve that here.
+
+Detect whether `<base>` looks like a remote-tracking ref (contains a `/` matching a known remote) or a bare branch name:
 
 ```bash
-git rev-parse --verify <base> 2>/dev/null && git rev-parse --verify <head> 2>/dev/null
+# If <base> is of the form <remote>/<branch>, try fetching that remote/branch first.
+# If <base> is a bare branch name without a remote prefix, try the default remote (origin
+# first, then the single remote if there's only one) as a fallback.
+BASE=<base>
+HEAD=<head>
+
+if ! git rev-parse --verify "$BASE" 2>/dev/null >/dev/null; then
+  if [[ "$BASE" == */* ]]; then
+    REMOTE=${BASE%%/*}
+    BRANCH=${BASE#*/}
+    git fetch --no-tags "$REMOTE" "$BRANCH" 2>/dev/null
+  else
+    # Try origin, then single-remote fallback
+    git fetch --no-tags origin "$BASE" 2>/dev/null || {
+      REMOTES=$(git remote)
+      REMOTE_COUNT=$(echo "$REMOTES" | grep -c .)
+      if [ "$REMOTE_COUNT" = "1" ]; then
+        git fetch --no-tags "$REMOTES" "$BASE" 2>/dev/null
+      fi
+    }
+  fi
+fi
+
+# Validate after fetch attempt
+git rev-parse --verify "$BASE" 2>/dev/null && git rev-parse --verify "$HEAD" 2>/dev/null
 ```
 
-If either fails, report "Invalid range: <base>..<head> -- <which endpoint> does not resolve" and exit gracefully without output.
+If either endpoint still fails to resolve after the fetch attempt, report "Invalid range: `<base>..<head>` -- `<base>` does not resolve (tried local and remote)" or similar for `<head>`, and exit gracefully without output. Do not fabricate a description from a partial or empty diff.
 
 Gather merge base, commit list, and full diff:
 
 ```bash
-MERGE_BASE=$(git merge-base <base> <head>) && echo "MERGE_BASE=$MERGE_BASE" && echo '=== COMMITS ===' && git log --oneline $MERGE_BASE..<head> && echo '=== DIFF ===' && git diff $MERGE_BASE...<head>
+MERGE_BASE=$(git merge-base "$BASE" "$HEAD") && echo "MERGE_BASE=$MERGE_BASE" && echo '=== COMMITS ===' && git log --oneline $MERGE_BASE.."$HEAD" && echo '=== DIFF ===' && git diff $MERGE_BASE..."$HEAD"
 ```
 
-If the commit list is empty, report "No commits between <base> and <head>" and exit gracefully.
+If the commit list is empty, report "No commits between `<base>` and `<head>`" and exit gracefully.
 
 ---
 

@@ -71,22 +71,38 @@ If the URL-derived repo matches the local `origin` remote's repo, route to Case 
 
 **Case A — PR is in the current repo** (common case when the user is working inside the target repo):
 
-Resolve the base remote (the one whose URL points to the PR's base repository; fall back to `origin`). Do not assume a local branch matching `headRefName` exists: the PR may come from a fork, the local branch may have been deleted, the clone may not have fetched it, or the user may be running the skill from a different branch. Resolve the PR's head commit via the **`refs/pull/<number>/head`** ref, which GitHub makes available on every PR regardless of source repository.
+Resolve the base remote (the one whose URL points to the PR's base repository; fall back to `origin`). Do not assume a local branch matching `headRefName` exists: the PR may come from a fork, the local branch may have been deleted, the clone may not have fetched it, or the user may be running the skill from a different branch.
 
-Fetch both the base ref (in case it isn't local yet) and the PR head ref in one step, then capture the head SHA immediately:
+Extract the PR head SHA directly from the `gh pr view --json commits` response. `commits` is an ordered array; the last entry is the PR's current tip. Extract it explicitly:
 
 ```bash
-git fetch --no-tags <base-remote> <baseRefName> "refs/pull/<number>/head"
-PR_HEAD_SHA=$(git rev-parse FETCH_HEAD)
+PR_HEAD_SHA=$(gh pr view <pr-ref> --json commits --jq '.commits[-1].oid')
 ```
 
-**`FETCH_HEAD` is ephemeral.** Do not run other `git fetch` commands, do not dispatch parallel shell operations that might fetch, and do not separate the fetch and `rev-parse` steps across tool calls. Capture into `PR_HEAD_SHA` synchronously in the same shell invocation, then use `$PR_HEAD_SHA` for every subsequent git command. If anything else runs a fetch between these two steps, `FETCH_HEAD` will be overwritten and `rev-parse` will return the wrong SHA.
+Using an explicit SHA avoids `FETCH_HEAD` entirely, which has a multi-ref ordering problem: `git fetch --no-tags <remote> <refA> <refB>` populates `.git/FETCH_HEAD` with both refs but `git rev-parse FETCH_HEAD` returns only the first entry's SHA. When the base ref comes before the PR head in the fetch command, `rev-parse` silently returns the base SHA and subsequent `git merge-base`/`git diff` calls produce an empty diff with no error signal. Using an explicit SHA sidesteps the issue.
 
-Gather merge base, commit list, and full diff using the resolved SHA (not `headRefName`):
+Now fetch the base ref (to ensure it's current locally) and the PR head SHA (to ensure the commit's object is in the local store — required by `git merge-base`, `git log`, `git diff`):
+
+```bash
+git fetch --no-tags <base-remote> <baseRefName> $PR_HEAD_SHA
+```
+
+This is a single fetch, safe to run with any ref ordering because downstream commands address commits by explicit SHA, not via `FETCH_HEAD`. The fetch is idempotent when both the base and the SHA are already local.
+
+Gather merge base, commit list, and full diff using the explicit SHA:
 
 ```bash
 MERGE_BASE=$(git merge-base <base-remote>/<baseRefName> $PR_HEAD_SHA) && echo "MERGE_BASE=$MERGE_BASE" && echo '=== COMMITS ===' && git log --oneline $MERGE_BASE..$PR_HEAD_SHA && echo '=== DIFF ===' && git diff $MERGE_BASE...$PR_HEAD_SHA
 ```
+
+If the explicit-SHA fetch fails (the server refuses to serve a non-tip SHA — rare on GitHub, possible on some GHES configurations), fall back to fetching `refs/pull/<number>/head` and reading `PR_HEAD_SHA` from `.git/FETCH_HEAD` by pull-ref pattern rather than from `git rev-parse FETCH_HEAD`:
+
+```bash
+git fetch --no-tags <base-remote> "refs/pull/<number>/head"
+PR_HEAD_SHA=$(awk '/refs\/pull\/[0-9]+\/head/ {print $1; exit}' "$(git rev-parse --git-dir)/FETCH_HEAD")
+```
+
+This grep-based extraction is robust against multi-ref ordering because it matches the specific ref by pattern rather than relying on `FETCH_HEAD`'s first-entry semantics.
 
 **Case B — PR is in a different repo** (user pasted a URL to a repo not present locally):
 
@@ -98,8 +114,6 @@ gh pr view <pr-ref> --json commits --jq '.commits[] | [.oid[0:7], .messageHeadli
 ```
 
 This gives an equivalent diff and commit list without requiring the base or head refs to be local. The rest of the pipeline (classification, framing, writing) proceeds unchanged. Note in the returned body or a short caller-facing note when this fallback was used — it signals that evidence preservation (Step 3) relied on the PR body as fetched from the API rather than on any local working-tree state.
-
-**Alternative path when `refs/pull/<number>/head` is unavailable** (some ghes configurations or non-GitHub remotes): read the last commit SHA from the `commits` array returned by `gh pr view`'s `--json commits` output and use that SHA directly — no named ref needed because `gh` surfaces the SHA from the API even when the commit isn't local. Subsequent `git` calls then require the commit to be fetched: `git fetch --no-tags <base-remote> <PR_HEAD_SHA>` is idempotent when the commit is already local.
 
 Also capture the existing PR body for evidence preservation in Step 3 (both cases).
 

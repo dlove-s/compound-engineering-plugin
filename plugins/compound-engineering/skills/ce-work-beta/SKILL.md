@@ -218,10 +218,11 @@ Determine how to proceed based on what was provided in `<input_document>`.
 
    **After all parallel subagents in a batch complete:**
    1. Wait for every subagent in the current parallel batch to finish before acting on any of their results
-   2. For each completed unit, in dependency order: review the diff, run the relevant test suite, stage only that unit's files, and commit with a conventional message derived from the unit's Goal. Note: tests run on the combined working tree containing all units' changes; this is acceptable because the Parallel Safety Check guarantees non-overlapping file sets, so no unit's tests are affected by another unit's edits. Full per-unit isolation via worktrees is tracked in issue #550.
-   3. If tests fail after merging a unit's changes, diagnose and fix before committing the next unit
-   4. Update the plan checkboxes and task list
-   5. Dispatch the next batch of independent units, or the next dependent unit
+   2. Cross-check for discovered file collisions: compare the actual files modified by all subagents in the batch (not just their declared `Files:` lists). Subagents may create or modify files not anticipated during planning — this is expected, since plans describe *what* not *how*. A collision only matters when 2+ subagents in the same batch modified the same file. If a collision is found, handle those units' changes to the shared file sequentially — commit one unit's version, then re-apply the other unit's changes on top and resolve conflicts before committing
+   3. For each completed unit, in dependency order: review the diff, run the relevant test suite, stage only that unit's files, and commit with a conventional message derived from the unit's Goal
+   4. If tests fail after committing a unit's changes, diagnose and fix before committing the next unit
+   5. Update the plan checkboxes and task list
+   6. Dispatch the next batch of independent units, or the next dependent unit
 
 ### Phase 2: Execute
 

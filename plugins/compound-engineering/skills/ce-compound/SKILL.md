@@ -69,10 +69,10 @@ Phase 1 subagents return TEXT DATA to the orchestrator. They must NOT use Write,
 
 ### Phase 0.5: Auto Memory Scan
 
-Before launching Phase 1 subagents, check the auto memory directory for notes relevant to the problem being documented.
+Before launching Phase 1 subagents, check auto memory for notes relevant to the problem being documented.
 
-1. Read MEMORY.md from the auto memory directory (the path is known from the system prompt context)
-2. If the directory or MEMORY.md does not exist, is empty, or is unreadable, skip this step and proceed to Phase 1 unchanged
+1. Read `${CLAUDE_PROJECT_DIR}/memory/MEMORY.md` (Claude Code only)
+2. If the file does not exist, is empty, or is unreadable, skip this step and proceed to Phase 1 unchanged
 3. Scan the entries for anything related to the problem being documented -- use semantic judgment, not keyword matching
 4. If relevant entries are found, prepare a labeled excerpt block:
 
@@ -337,7 +337,7 @@ This mode skips parallel subagents entirely. The orchestrator performs all work 
 
 The orchestrator (main conversation) performs ALL of the following in one sequential pass:
 
-1. **Extract from conversation**: Identify the problem and solution from conversation history. Also read MEMORY.md from the auto memory directory if it exists -- use any relevant notes as supplementary context alongside conversation history. Tag any memory-sourced content incorporated into the final doc with "(auto memory [claude])"
+1. **Extract from conversation**: Identify the problem and solution from conversation history. Also read `${CLAUDE_PROJECT_DIR}/memory/MEMORY.md` if it exists (Claude Code only) -- use any relevant notes as supplementary context alongside conversation history. Tag any memory-sourced content incorporated into the final doc with "(auto memory [claude])"
 2. **Classify**: Read `references/schema.yaml` and `references/yaml-schema.md`, then determine track (bug vs knowledge), category, and filename
 3. **Write minimal doc**: Create `docs/solutions/[category]/[filename].md` using the appropriate track template from `assets/resolution-template.md`, with:
    - YAML frontmatter with track-appropriate fields

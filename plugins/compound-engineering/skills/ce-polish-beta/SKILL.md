@@ -277,18 +277,28 @@ Run the project-type detector:
 bash scripts/detect-project-type.sh
 ```
 
-Output is a single line: `rails`, `next`, `vite`, `procfile`, `multiple`, or `unknown`.
+Output is a single token or compound value:
+- `<type>` — single match at root (e.g., `next`, `rails`)
+- `<type>@<cwd>` — single monorepo hit (e.g., `next@apps/web`)
+- `multiple` — multiple disjoint root signatures
+- `multiple:<type>@<cwd>,<type>@<cwd>,...` — multiple monorepo hits
 
 | Output | Reference file | Behavior |
 |--------|----------------|----------|
 | `rails` | `references/dev-server-rails.md` | Load reference, use `bin/dev` at port 3000 (adjust via cascade). |
-| `next` | `references/dev-server-next.md` | Load reference, use `npm run dev` (or detected pm) at port 3000. |
-| `vite` | `references/dev-server-vite.md` | Load reference, use `npm run dev` at port 5173. |
+| `next` | `references/dev-server-next.md` | Load reference, use detected pm at port 3000. |
+| `vite` | `references/dev-server-vite.md` | Load reference, use detected pm at port 5173. |
+| `nuxt` | `references/dev-server-nuxt.md` | Load reference, use detected pm at port 3000. |
+| `astro` | `references/dev-server-astro.md` | Load reference, use detected pm at port 4321. |
+| `remix` | `references/dev-server-remix.md` | Load reference, use detected pm at port 3000. |
+| `sveltekit` | `references/dev-server-sveltekit.md` | Load reference, use detected pm at port 5173. |
 | `procfile` | `references/dev-server-procfile.md` | Load reference, use `overmind start -f Procfile.dev` (or foreman fallback) at port 3000. |
 | `multiple` | — | **Interactive:** ask the user to disambiguate (which framework runs the polish-facing dev server?). **Headless:** `Polish failed (headless mode). Reason: multiple project-type signatures detected. Author .claude/launch.json to disambiguate.` Stop. |
 | `unknown` | — | **Interactive:** ask the user for `runtimeExecutable` + `runtimeArgs` + `port` explicitly. **Headless:** `Polish failed (headless mode). Reason: unknown project type. Author .claude/launch.json.` Stop. |
 
-For port resolution when the per-framework reference does not pin one, consult `references/dev-server-detection.md`. The cascade there is duplicated from `test-browser` per the "skills are self-contained" repo rule.
+When the detector returns `<type>@<cwd>`, route by `<type>` as usual and carry `<cwd>` into the stub-writer for Phase 3.3. When the detector returns `multiple:<type1>@<cwd1>,<type2>@<cwd2>,...`, the interactive prompt lists the `<type>@<cwd>` pairs and asks the user to pick one; headless mode emits `Polish failed (headless mode). Reason: multiple project-type signatures detected: <type1>@<cwd1>, <type2>@<cwd2>. Author .claude/launch.json to disambiguate.` and stops.
+
+For port resolution, call `scripts/resolve-port.sh` (see `references/dev-server-detection.md` for probe order and framework defaults).
 
 ### 3.3 Offer to persist a `launch.json` stub
 
@@ -298,7 +308,9 @@ Only runs when 3.2 produced the working command (not when 3.1 already found one 
 2. **Headless:** never write. The caller invoked headless for automation, not for repo-state mutation. Record `launch_json_stub_action: "skipped_headless"`.
 3. On **Save** (interactive only):
    - Render the stub template from `references/launch-json-schema.md` matching the detected project type.
-   - Substitute the resolved port if the cascade returned a non-default value.
+   - For Next/Vite/Nuxt/Astro/Remix/SvelteKit stubs, call `scripts/resolve-package-manager.sh` (passing `<cwd>` as the positional arg when detector emitted `<type>@<cwd>`) and substitute the emitted binary and args into `runtimeExecutable` / `runtimeArgs`.
+   - Call `scripts/resolve-port.sh [<cwd>] --type <type>` and substitute the emitted port.
+   - When the detector emitted `<type>@<cwd>`, populate the stub's `cwd` field with that value.
    - Write to `<repo-root>/.claude/launch.json`. Create `.claude/` if missing.
    - Record `launch_json_stub_action: "written"`.
 
@@ -829,10 +841,14 @@ The terminal `Polish complete` signal is emitted on both success and structured 
 Large reference files (loaded on demand via backtick paths above):
 - `references/launch-json-schema.md` — launch.json v0.2.0 schema + per-framework stubs
 - `references/ide-detection.md` — host IDE detection probes and browser-handoff instructions
-- `references/dev-server-detection.md` — port resolution cascade (CLI flag / AGENTS.md / package.json / .env / default)
+- `references/dev-server-detection.md` — port resolution documentation (runtime path is `scripts/resolve-port.sh`)
 - `references/dev-server-rails.md` — Rails polish-facing dev-server defaults
 - `references/dev-server-next.md` — Next.js polish-facing dev-server defaults
 - `references/dev-server-vite.md` — Vite polish-facing dev-server defaults
+- `references/dev-server-nuxt.md` — Nuxt polish-facing dev-server defaults
+- `references/dev-server-astro.md` — Astro polish-facing dev-server defaults
+- `references/dev-server-remix.md` — Remix (classic) polish-facing dev-server defaults
+- `references/dev-server-sveltekit.md` — SvelteKit polish-facing dev-server defaults
 - `references/dev-server-procfile.md` — Procfile-based polish-facing dev-server defaults
 - `references/checklist-template.md` — checklist.md field semantics + allowed actions
 - `references/subagent-dispatch-matrix.md` — surface → agent dispatch map + grouping rule
@@ -841,7 +857,9 @@ Large reference files (loaded on demand via backtick paths above):
 
 Scripts (invoked via `bash scripts/<name>`):
 - `scripts/read-launch-json.sh` — launch.json reader with sentinel outputs
-- `scripts/detect-project-type.sh` — project-type classifier
+- `scripts/detect-project-type.sh` — project-type classifier (root detection + monorepo probe)
+- `scripts/resolve-package-manager.sh` — lockfile-based package-manager resolver
+- `scripts/resolve-port.sh` — 8-probe port resolution cascade
 - `scripts/extract-surfaces.sh` — diff → surface-category JSON
 - `scripts/classify-oversized.sh` — per-item manageable/oversized classifier
 - `scripts/parse-checklist.sh` — user-edited checklist.md → structured JSON

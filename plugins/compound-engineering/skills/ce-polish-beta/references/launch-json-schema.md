@@ -99,6 +99,70 @@ When polish auto-detects a project type and the user confirms "Save this as `.cl
 }
 ```
 
+### Nuxt stub
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Nuxt dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}
+```
+
+### Astro stub
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Astro dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 4321
+    }
+  ]
+}
+```
+
+### Remix stub
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Remix dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
+    }
+  ]
+}
+```
+
+### SvelteKit stub
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "SvelteKit dev",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 5173
+    }
+  ]
+}
+```
+
 ## Why a subset of VS Code's schema
 
 Polish does not use `type`, `request`, `console`, `stopOnEntry`, or any of the other VS Code fields. Including them is harmless — polish ignores them — but the stub writer never adds them. The fields polish cares about are the ones that describe *how to start a long-running dev server on a known port*, which is a smaller surface than what VS Code uses for debug-stepping.

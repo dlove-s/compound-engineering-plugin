@@ -456,6 +456,74 @@ describe("cleanupStalePrompts", () => {
     expect(await exists(path.join(root, "ce-plan.md"))).toBe(false)
     expect(await exists(path.join(root, "ce-work-beta.md"))).toBe(false)
   })
+
+  test("removes wrappers whose description has drifted from the current skill", async () => {
+    // Regression: across shipped plugin versions the ce-plan / ce-work-beta
+    // descriptions have been reworded multiple times (e.g. v2.66.1 lacked the
+    // trailing "For exploratory... prefer ce-brainstorm first." sentence that
+    // the post-rename description adds, v2.55 used a different opening
+    // sentence, v2.45 used a terse one-liner). Requiring an exact description
+    // match left those pre-upgrade wrappers in place, so users kept a prompt
+    // entrypoint that still targeted the pre-rename skill. Cleanup now
+    // fingerprints on the body instruction string alone — the description is
+    // allowed to drift freely.
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "cleanup-prompts-drifted-desc-"))
+
+    // v2.66.1-style ce-plan description (no trailing ce-brainstorm guidance).
+    await createFile(
+      path.join(root, "ce-plan.md"),
+      promptWrapperContent(
+        "ce-plan",
+        "Create structured plans for any multi-step task -- software features, research workflows, events, study plans, or any goal that benefits from structured breakdown. Also deepen existing plans with interactive review of sub-agent findings.",
+      ),
+    )
+    // v2.55-era ce-plan description with a completely different opening.
+    await createFile(
+      path.join(root, "ce-work.md"),
+      promptWrapperContent(
+        "ce-work",
+        "Transform feature descriptions or requirements into implementation plans grounded in repo patterns and research.",
+      ),
+    )
+    // v2.45-style terse ce-plan description that no longer resembles current.
+    await createFile(
+      path.join(root, "ce-brainstorm.md"),
+      promptWrapperContent(
+        "ce-brainstorm",
+        "A completely different historical description that no current alias list would contain.",
+      ),
+    )
+
+    const removed = await cleanupStalePrompts(root)
+
+    expect(removed).toBe(3)
+    expect(await exists(path.join(root, "ce-plan.md"))).toBe(false)
+    expect(await exists(path.join(root, "ce-work.md"))).toBe(false)
+    expect(await exists(path.join(root, "ce-brainstorm.md"))).toBe(false)
+  })
+
+  test("preserves user files whose body is not the plugin-generated boilerplate", async () => {
+    // Body-only fingerprinting must still refuse to delete user-authored
+    // prompts that happen to share a stale file name. The distinguishing
+    // signal is the exact plugin-generated instruction sentence referencing
+    // the skill by name; user-authored prompts are overwhelmingly unlikely to
+    // contain it verbatim.
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), "cleanup-prompts-user-body-"))
+    await createFile(
+      path.join(root, "ce-plan.md"),
+      `---\ndescription: "User-authored ce-plan helper"\n---\n\nThis prompt does not invoke the ce-plan skill — it is a private workflow.\n`,
+    )
+    await createFile(
+      path.join(root, "ce-work.md"),
+      `---\ndescription: "Execute work efficiently while maintaining quality and finishing features"\n---\n\nCustom body that mentions the ce-work skill but not via the plugin's instruction boilerplate.\n`,
+    )
+
+    const removed = await cleanupStalePrompts(root)
+
+    expect(removed).toBe(0)
+    expect(await exists(path.join(root, "ce-plan.md"))).toBe(true)
+    expect(await exists(path.join(root, "ce-work.md"))).toBe(true)
+  })
 })
 
 describe("idempotency", () => {

@@ -103,8 +103,8 @@ After structuring the plan, ask the user how they want to receive it using the p
    - Use filename convention: `YYYY-MM-DD-<descriptive-name>-plan.md`
    - Start the document with a `# Title` heading, followed by `Created: YYYY-MM-DD` on the next line. No YAML frontmatter.
 
-2. **Share to Proof** — View the plan on the web and get a shareable link. Load the `proof` skill to create and share the document. Useful for sharing with others who aren't in the terminal.
+2. **Open in Proof** — Review the doc in Every's Proof editor, iterate with the agent via comments, or copy a link to share with others. Load the `proof` skill to create and open the document.
 
-3. **Both** — Save to disk and share to Proof.
+3. **Both** — Save to disk and open in Proof.
 
 Do not offer `/ce:work` (software-only) or issue creation (not applicable to non-software plans).

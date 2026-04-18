@@ -316,7 +316,7 @@ async function buildAgentIndex(dir: string): Promise<Map<string, string>> {
         continue
       }
       if (entry.isFile() && entry.name.endsWith(".md")) {
-        index.set(path.basename(entry.name, ".md"), fullPath)
+        index.set(path.basename(entry.name, ".md").replace(/\.agent$/, ""), fullPath)
       }
     }
   }

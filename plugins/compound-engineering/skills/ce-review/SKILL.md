@@ -618,26 +618,28 @@ After presenting findings and verdict (Stage 6), route the next steps by mode. R
 **Interactive mode**
 
 - Apply `safe_auto -> review-fixer` findings automatically without asking. These are safe by definition.
-- Ask a policy question **using the platform's blocking question tool** (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini) only when `gated_auto` or `manual` findings remain after safe fixes. Do not replace with a conversational open-ended question. Adapt the options to match what actually remains:
+- **Zero-remaining case:** if no `gated_auto` or `manual` findings remain after the `safe_auto` pass, skip the routing question entirely. Emit a one-line completion summary (e.g., `All findings resolved — N safe_auto fixes applied.`) followed by the existing end-of-review verdict, then proceed to Step 5 per the gating rule there.
+- **Tracker pre-detection:** before rendering the routing question, consult `references/tracker-defer.md` for the session's tracker tuple `{ tracker_name, confidence, sink_available }`. The probe runs at most once per session and is cached for the rest of the run. Detection drives the routing question's option C label and whether option C is offered at all.
+- **Routing question.** Ask using the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). Stem: `What should the agent do with the remaining N findings?` — third-person voice per `plugins/compound-engineering/AGENTS.md:127`. Options:
 
-  **When `gated_auto` findings are present** (with or without `manual`):
   ```
-  Safe fixes have been applied. What should I do with the remaining findings?
-  1. Review and approve specific gated fixes (Recommended)
-  2. Leave as residual work
-  3. Report only -- no further action
-  ```
-
-  **When only `manual` findings remain** (no `gated_auto`):
-  ```
-  Safe fixes have been applied. The remaining findings need manual resolution. What should I do?
-  1. Leave as residual work (Recommended)
-  2. Report only -- no further action
+  (A) Review each finding one by one — accept the recommendation or choose another action
+  (B) LFG. Apply the agent's best-judgment action per finding
+  (C) File a [TRACKER] ticket per finding without applying fixes
+  (D) Report only — take no further action
   ```
 
-  If no blocking question tool is available, present the applicable numbered options as text and wait for the user's selection before proceeding.
-- If no `gated_auto` or `manual` findings remain after safe fixes, skip the policy question entirely — report what was fixed and proceed to next steps.
-- Only include `gated_auto` findings in the fixer queue after the user explicitly approves the specific items. Do not widen the queue based on severity alone.
+  Substitute `[TRACKER]` per `references/tracker-defer.md` — the concrete tracker name when detection confidence is high and the sink is available; otherwise the generic form (`File a ticket`). When no tracker sink is detectable, **omit option C entirely** and add one line to the stem explaining why (e.g., `Defer unavailable — no tracker or task-tracking primitive detected on this platform.`). The three remaining options (A, B, D) survive.
+
+  When no blocking question tool is available, present the applicable options as a numbered list and wait for the user's reply.
+
+- **Dispatch on selection:**
+  - (A) `Review each finding one by one` — load `references/walkthrough.md` and enter the per-finding walk-through loop. The walk-through accumulates Apply decisions in memory; Defer decisions execute inline via `references/tracker-defer.md`; Skip / Acknowledge decisions are recorded as no-action; `LFG the rest` routes through `references/bulk-preview.md`. At end of the loop, dispatch one fixer subagent for the accumulated Apply set (Step 3). Emit the unified completion report.
+  - (B) `LFG. Apply the agent's best-judgment action per finding` — load `references/bulk-preview.md` scoped to every pending `gated_auto` / `manual` finding. On `Proceed`, execute the plan: Apply set → Step 3 fixer dispatch; Defer set → `references/tracker-defer.md`; Skip / Acknowledge → no-op. On `Cancel`, return to this routing question. Emit the unified completion report after execution.
+  - (C) `File a [TRACKER] ticket per finding without applying fixes` — load `references/bulk-preview.md` with every pending finding in the `Filing [TRACKER] tickets` bucket (regardless of the agent's natural recommendation). On `Proceed`, route every finding through `references/tracker-defer.md`; no fixes are applied. On `Cancel`, return to this routing question. Emit the unified completion report.
+  - (D) `Report only — take no further action` — stop after Stage 6's report. Do not enter any dispatch phase.
+
+- The walk-through's completion report, the LFG / File-tickets completion report, and the zero-remaining completion summary all follow the unified completion-report structure documented in `references/walkthrough.md`. Use the same structure across every terminal path.
 
 **Autofix mode**
 

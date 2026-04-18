@@ -368,12 +368,12 @@ Generic skill names (`setup`, `plan`, `review`) collide when users install multi
 
 **Files:**
 - Modify (agent files with skill name references — paths reflect post-rename location):
-  - `plugins/compound-engineering/agents/research/ce-git-history-analyzer.md` — references `/ce:plan`
-  - `plugins/compound-engineering/agents/research/ce-issue-intelligence-analyst.md` — references `/ce:ideate`
-  - `plugins/compound-engineering/agents/research/ce-learnings-researcher.md` — references `/ce:plan`
-  - `plugins/compound-engineering/agents/review/ce-code-simplicity-reviewer.md` — references `/ce:plan`, `/ce:work`
-  - `plugins/compound-engineering/agents/research/ce-best-practices-researcher.md` — references `agent-native-architecture`, `git-worktree` bare names (now `ce-agent-native-architecture`, `ce-worktree`)
-  - `plugins/compound-engineering/agents/workflow/ce-bug-reproduction-validator.md` — references `agent-browser` skill (excluded, no change needed — verify only)
+  - `plugins/compound-engineering/agents/research/ce-git-history-analyzer.agent.md` — references `/ce:plan`
+  - `plugins/compound-engineering/agents/research/ce-issue-intelligence-analyst.agent.md` — references `/ce:ideate`
+  - `plugins/compound-engineering/agents/research/ce-learnings-researcher.agent.md` — references `/ce:plan`
+  - `plugins/compound-engineering/agents/review/ce-code-simplicity-reviewer.agent.md` — references `/ce:plan`, `/ce:work`
+  - `plugins/compound-engineering/agents/research/ce-best-practices-researcher.agent.md` — references `agent-native-architecture`, `git-worktree` bare names (now `ce-agent-native-architecture`, `ce-worktree`)
+  - `bug-reproduction-validator` workflow agent reference — excluded, no change needed, verify only
 - Comprehensive grep to find any other agent files with old skill references
 
 **Approach:**

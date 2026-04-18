@@ -72,7 +72,7 @@ describe("writeOpenClawBundle", () => {
       path.join(staleDir, "SKILL.md"),
       legacyAgentSkillContent(
         "adversarial-reviewer",
-        await pluginDescription("plugins/compound-engineering/agents/review/ce-adversarial-reviewer.md"),
+        await pluginDescription("plugins/compound-engineering/agents/review/ce-adversarial-reviewer.agent.md"),
       ),
     )
 

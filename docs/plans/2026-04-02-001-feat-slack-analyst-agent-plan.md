@@ -43,8 +43,8 @@ Coding agents have no visibility into organizational knowledge that lives in Sla
 
 ### Relevant Code and Patterns
 
-- `plugins/compound-engineering/agents/research/issue-intelligence-analyst.md` — closest precedent: external dependency, conditional dispatch, precondition checks with two-tier degradation, structured output
-- `plugins/compound-engineering/agents/research/learnings-researcher.md` — output format precedent: topic-organized digest with source attribution
+- `plugins/compound-engineering/agents/research/ce-issue-intelligence-analyst.agent.md` — closest precedent: external dependency, conditional dispatch, precondition checks with two-tier degradation, structured output
+- `plugins/compound-engineering/agents/research/ce-learnings-researcher.agent.md` — output format precedent: topic-organized digest with source attribution
 - `plugins/compound-engineering/skills/ce-ideate/SKILL.md` lines 116-122 — conditional dispatch pattern: trigger condition in prior phase, parallel dispatch, error handling with warning + continue
 - `plugins/compound-engineering/skills/ce-plan/SKILL.md` lines 157-167 — parallel research agent dispatch pattern
 - `plugins/compound-engineering/skills/ce-brainstorm/SKILL.md` lines 81-97 — Phase 1.1 inline scanning (no agent dispatch today)
@@ -89,7 +89,7 @@ Coding agents have no visibility into organizational knowledge that lives in Sla
 **Dependencies:** None
 
 **Files:**
-- Create: `plugins/compound-engineering/agents/research/ce-slack-researcher.md`
+- Create: `plugins/compound-engineering/agents/research/ce-slack-researcher.agent.md`
 
 **Approach:**
 - Follow the issue-intelligence-analyst as the structural template: frontmatter -> examples -> role statement -> phased methodology -> output format -> tool guidance
@@ -105,8 +105,8 @@ Coding agents have no visibility into organizational knowledge that lives in Sla
 - Tool guidance: Use Slack MCP tools only. No shell commands. No writing to Slack. Process and summarize data directly, do not pass raw message dumps
 
 **Patterns to follow:**
-- `plugins/compound-engineering/agents/research/issue-intelligence-analyst.md` — structure, precondition pattern, output format
-- `plugins/compound-engineering/agents/research/learnings-researcher.md` — concise digest output pattern
+- `plugins/compound-engineering/agents/research/ce-issue-intelligence-analyst.agent.md` — structure, precondition pattern, output format
+- `plugins/compound-engineering/agents/research/ce-learnings-researcher.agent.md` — concise digest output pattern
 
 **Test scenarios:**
 - Happy path: Agent receives a meaningful topic ("authentication migration"), finds relevant Slack conversations, returns a digest with themed findings and source attribution
@@ -283,7 +283,7 @@ Coding agents have no visibility into organizational knowledge that lives in Sla
 ## Sources & References
 
 - **Origin document:** [docs/brainstorms/2026-04-02-slack-researcher-agent-requirements.md](docs/brainstorms/2026-04-02-slack-researcher-agent-requirements.md)
-- Related agent: `plugins/compound-engineering/agents/research/issue-intelligence-analyst.md`
+- Related agent: `plugins/compound-engineering/agents/research/ce-issue-intelligence-analyst.agent.md`
 - Related skills: `plugins/compound-engineering/skills/ce-ideate/SKILL.md`, `plugins/compound-engineering/skills/ce-plan/SKILL.md`, `plugins/compound-engineering/skills/ce-brainstorm/SKILL.md`
 - Slack MCP docs: `https://docs.slack.dev/ai/slack-mcp-server/`
 - Institutional learnings: `docs/solutions/skill-design/beta-promotion-orchestration-contract.md`, `docs/solutions/skill-design/pass-paths-not-content-to-subagents-2026-03-26.md`

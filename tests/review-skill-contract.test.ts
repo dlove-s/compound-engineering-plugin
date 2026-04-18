@@ -122,6 +122,25 @@ describe("ce-review contract", () => {
     expect(subagentTemplate).toMatch(/observable behavior/i)
     expect(subagentTemplate).toMatch(/required/i)
 
+    // walkthrough.md carries the four per-finding option labels (Apply / Defer / Skip /
+    // LFG the rest). Assert presence of each distinguishing word so renaming an option
+    // breaks the test. Exact label wording may be refined for clarity — these assertions
+    // check the structural contract, not the prose.
+    const walkthrough = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-review/references/walkthrough.md",
+    )
+    expect(walkthrough).toContain("Apply the proposed fix")
+    expect(walkthrough).toContain("Defer — file a [TRACKER] ticket")
+    expect(walkthrough).toContain("Skip — don't apply, don't track")
+    expect(walkthrough).toMatch(/LFG the rest/)
+
+    // bulk-preview.md contract: exactly Proceed / Cancel, no third option.
+    const bulkPreview = await readRepoFile(
+      "plugins/compound-engineering/skills/ce-review/references/bulk-preview.md",
+    )
+    expect(bulkPreview).toContain("Proceed")
+    expect(bulkPreview).toContain("Cancel")
+
     // Step 5 final-next-steps flow is gated on fixes-applied.
     expect(content).toMatch(/only when one or more fixes landed/i)
 

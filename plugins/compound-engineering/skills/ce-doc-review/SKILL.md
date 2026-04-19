@@ -150,15 +150,20 @@ On round 2+ (after one or more prior rounds in the current interactive session),
 <prior-decisions>
 Round 1 — applied (N entries):
 - {section}: "{title}" ({reviewer}, {confidence})
+  Evidence: "{evidence_snippet}"
 
 Round 1 — rejected (M entries):
 - {section}: "{title}" — Skipped because {reason}
+  Evidence: "{evidence_snippet}"
 - {section}: "{title}" — Deferred to Open Questions because {reason or "no reason provided"}
+  Evidence: "{evidence_snippet}"
 
 Round 2 — applied (N entries):
 ...
 </prior-decisions>
 ```
+
+Each entry carries an `Evidence:` line because synthesis R29 (rejected-finding suppression) and R30 (fix-landed verification) both use an evidence-substring overlap check as part of their matching predicate — without the evidence snippet in the primer, the orchestrator cannot compute the `>50%` overlap test and has to fall back to fingerprint-only matching, which either re-surfaces rejected findings or suppresses too aggressively. The `{evidence_snippet}` is the first evidence quote from the finding, truncated to the first ~120 characters (preserving whole words at the boundary) and with internal quotes escaped. If a finding has multiple evidence entries, use the first one; the rest live in the run artifact and are not needed for the overlap check.
 
 Accumulate across all rounds in the current session. Skip and Defer actions both count as "rejected" for suppression purposes — both signal the user decided the finding wasn't worth actioning this round. Applied findings stay on the applied list so round-N+1 personas can verify fixes landed (see R30 in `references/synthesis-and-presentation.md`).
 

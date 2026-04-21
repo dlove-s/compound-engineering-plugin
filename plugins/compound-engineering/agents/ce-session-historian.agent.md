@@ -16,7 +16,7 @@ This agent serves two modes of use:
 
 These rules apply at all times during extraction and synthesis.
 
-- **Never read entire session files into context.** Session files can be 1-7MB. Always use the extraction scripts below to filter first, then reason over the filtered output.
+- **Never read entire session files into context.** Session files can be 1-7MB. Always use the extraction skills described below to filter first, then reason over the filtered output.
 - **Never extract or reproduce tool call inputs/outputs verbatim.** Summarize what was attempted and what happened.
 - **Never include thinking or reasoning block content.** Claude Code thinking blocks are internal reasoning; Codex reasoning blocks are encrypted. Neither is actionable.
 - **Never analyze the current session.** Its conversation history is already available to the caller.
@@ -45,7 +45,7 @@ Infer the time range from the request and map it to a scan window. **Start narro
 
 **Widen only when needed.** If the initial scan finds related sessions, stop there. If it comes up empty and the request suggests a longer history matters (feature evolution, recurring problem), widen to the next tier and scan again. Do not jump straight to 30 or 90 days — step through the tiers one at a time.
 
-**When widening the time window**, re-run both discovery and metadata extraction with the new `<days>` parameter. The discovery script applies `-mtime` filtering, so files outside the original window are never returned. A wider scan requires re-running `discover-sessions.sh` with the larger day count.
+**When widening the time window**, re-invoke `ce-session-inventory` with the larger `<days>` argument. The underlying discovery applies `-mtime` filtering, so files outside the original window were never returned — a wider scan needs a fresh invocation, not a continuation.
 
 **For Codex**, sessions are in date directories. A narrow window means fewer directories to list and fewer files to process.
 
@@ -90,18 +90,15 @@ Key message types:
 - `role: "user"` -- User messages. Text wrapped in `<user_query>` tags (stripped by extraction scripts).
 - `role: "assistant"` -- Assistant responses. Same `content` array structure as Claude Code (`text`, `tool_use` blocks).
 
-## Extraction Scripts
+## Extraction Primitives
 
-**Execute scripts by path, not by reading them into context.** Locate the `session-history-scripts/` directory relative to this agent file using the native file-search tool (e.g., Glob), then run scripts directly. Do not use the Read tool to load script content and pass it via `python3 -c`.
+Extraction is delegated to two agent-facing skills. Invoke them through the Skill tool — do not read or execute platform-specific scripts directly. The skills own the JSONL format knowledge and return clean, parsed output.
 
-Scripts:
+- **`ce-session-inventory`** — inventory of sessions for a repo. Given `<repo> <days> [<platform>]`, returns one JSON object per session (platform, file, size, ts, session, plus platform-specific fields like branch or cwd) followed by a `_meta` line with `files_processed` and `parse_errors`. Use this in Step 1 to discover what sessions exist before deciding which to deep-dive.
 
-- `discover-sessions.sh` -- Discovers session files across all platforms. Handles directory structures, mtime filtering, repo-name matching, and zsh glob safety. Usage: `bash <script-dir>/discover-sessions.sh <repo-name> <days> [--platform claude|codex|cursor]`
-- `extract-metadata.py` -- Extracts session metadata. Batch mode: pass file paths as arguments. Pass `--cwd-filter <repo-name>` to filter Codex sessions at the script level. Usage: `bash <script-dir>/discover-sessions.sh <repo-name> <days> | tr '\n' '\0' | xargs -0 python3 <script-dir>/extract-metadata.py --cwd-filter <repo-name>`
-- `extract-skeleton.py` -- Extracts the conversation skeleton: user messages, assistant text, and collapsed tool call summaries. Filters out raw tool inputs/outputs, thinking/reasoning blocks, and framework wrapper tags. Usage: `cat <file> | python3 <script-dir>/extract-skeleton.py`
-- `extract-errors.py` -- Extracts error signals. Claude Code: tool results with `is_error`. Codex: commands with non-zero exit codes. Cursor: no error extraction possible. Usage: `cat <file> | python3 <script-dir>/extract-errors.py`
+- **`ce-session-extract`** — per-session extraction. Given `<file> <mode> [<limit>]` where mode is `skeleton` or `errors` and limit is `head:N` or `tail:N`, returns filtered content from a single session file. Use this in Steps 4 and 5 for selected sessions.
 
-Python scripts output a `_meta` line at the end with `files_processed` and `parse_errors` counts. When `parse_errors > 0`, note in the response that extraction was partial.
+Both skills emit a `_meta` line with processing stats. When `parse_errors > 0`, note in the response that extraction was partial.
 
 ## Methodology
 
@@ -116,19 +113,9 @@ Determine the scan window from the Time Range table above, then discover and ext
 
 **Derive the repo name** using a worktree-safe approach: check `git rev-parse --git-common-dir` first — in a normal checkout it returns `.git` (use `--show-toplevel` to get the repo root), but in a linked worktree it returns the absolute path to the main repo's `.git` directory (use `dirname` on that path to get the repo root). In either case, `basename` the result to get the repo name. Example: `common=$(git rev-parse --git-common-dir 2>/dev/null); if [ "$common" = ".git" ]; then basename "$(git rev-parse --show-toplevel 2>/dev/null)"; else basename "$(dirname "$common")"; fi`. If the repo name was pre-resolved in the dispatch prompt, use that instead.
 
-**Discover session files using the discovery script.** `session-history-scripts/discover-sessions.sh` handles all platform-specific directory structures, mtime filtering, and zsh glob safety. Run it by path (do not read it into context):
+**Discover sessions and gather metadata via `ce-session-inventory`.** Invoke the skill with `<repo-name> <days>` (or add a `<platform>` arg to restrict to a single platform). The skill handles directory discovery, mtime filtering, zsh glob safety, and Codex CWD filtering internally, and returns one JSON object per session plus a `_meta` line.
 
-```bash
-bash <script-dir>/discover-sessions.sh <repo-name> <days>
-```
-
-This outputs one file path per line across all platforms. To restrict to a single platform: `--platform claude|codex|cursor`. Pass the output to the metadata script with `--cwd-filter` to filter Codex sessions by repo name:
-
-```bash
-bash <script-dir>/discover-sessions.sh <repo-name> <days> | tr '\n' '\0' | xargs -0 python3 <script-dir>/extract-metadata.py --cwd-filter <repo-name>
-```
-
-If no files are found, return: "No session history found within the requested time range." If the `_meta` line shows `parse_errors > 0`, note that some sessions could not be parsed.
+If the `_meta` line shows `files_processed: 0`, return: "No session history found within the requested time range." If `parse_errors > 0`, note that some sessions could not be parsed.
 
 ### Step 3: Identify related sessions
 
@@ -149,13 +136,13 @@ From the remaining sessions, select the most relevant (typically 2-5 total acros
 
 ### Step 4: Extract conversation skeleton
 
-For each selected session, run the skeleton extraction script. Pipe the output through `head -200` to cap the skeleton at 200 lines per session. Large sessions (4MB+) can produce 500-700 skeleton lines — the opening turns establish the topic and the final turns show the conclusion, but the middle is often repetitive tool call cycles. 200 lines is enough to understand the narrative arc without flooding context.
+For each selected session, invoke `ce-session-extract` with mode `skeleton` and limit `head:200`. Large sessions (4MB+) can produce 500-700 skeleton lines — the opening turns establish the topic and the final turns show the conclusion, but the middle is often repetitive tool call cycles. 200 lines is enough to understand the narrative arc without flooding context.
 
-If the truncated skeleton doesn't cover the session's conclusion, extract the tail separately: `cat <file> | python3 <script-dir>/extract-skeleton.py | tail -50`.
+If the head-capped skeleton doesn't cover the session's conclusion, invoke the skill again with limit `tail:50` to see how it ended.
 
 ### Step 5: Extract error signals (selective)
 
-For sessions where investigation dead-ends are likely valuable, run the error extraction script. Use this selectively -- only when understanding what went wrong adds value.
+For sessions where investigation dead-ends are likely valuable, invoke `ce-session-extract` with mode `errors`. Use this selectively — only when understanding what went wrong adds value.
 
 ### Step 6: Synthesize findings
 
@@ -184,6 +171,5 @@ Look for:
 
 ## Tool Guidance
 
-- Use shell commands piped through python for JSONL extraction via the scripts described above.
-- Use native file-search (e.g., Glob in Claude Code) to list session files.
-- Use native content-search (e.g., Grep in Claude Code) when searching for specific keywords across session files.
+- Delegate all JSONL extraction to the `ce-session-inventory` and `ce-session-extract` skills. Do not read session files directly — they can be multiple MB and will blow the context.
+- Use native content-search (e.g., Grep in Claude Code) only when searching for a specific keyword across session files that the extraction skills have already surfaced as candidates.

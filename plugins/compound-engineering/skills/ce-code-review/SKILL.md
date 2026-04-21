@@ -72,8 +72,8 @@ All tokens are optional. Each one present means one less thing to infer. When ab
 
 ### Interactive mode rules
 
-- **Pre-load the platform question tool before any question fires.** In Claude Code, `AskUserQuestion` is a deferred tool — its schema is not available at session start. At the start of Interactive-mode work (before Stage 2 intent-ambiguity questions, the After-Review routing question, walk-through per-finding questions, bulk-preview Proceed/Cancel, and tracker-defer failure sub-questions), call `ToolSearch` with query `select:AskUserQuestion` to load the schema. Load it **once, eagerly, at the top of the Interactive flow** — do not wait for the first question site and do not decide it on a per-site basis. On Codex (`request_user_input`) and Gemini (`ask_user`) this step is not required; the tools are loaded by default.
-- **The numbered-list fallback only applies on confirmed load failure.** The skill's fallback pattern — "present the options as a numbered list and wait for the user's reply" — is valid **only** when `ToolSearch` returns no match or the tool call explicitly fails. Rendering a question as narrative text because the tool feels inconvenient, because the model is in report-formatting mode, or because the instruction was buried in a long skill is a bug. A question that calls for a user decision must either fire the tool or fail loudly.
+- **Pre-load the platform question tool before any question fires.** In Claude Code, `AskUserQuestion` is a deferred tool — its schema is not available at session start. At the start of Interactive-mode work (before Stage 2 intent-ambiguity questions, the After-Review routing question, walk-through per-finding questions, bulk-preview Proceed/Cancel, and tracker-defer failure sub-questions), call `ToolSearch` with query `select:AskUserQuestion` to load the schema. Load it **once, eagerly, at the top of the Interactive flow** — do not wait for the first question site and do not decide it on a per-site basis. On Codex and Gemini this preload step does not apply.
+- **The numbered-list fallback only applies when the harness genuinely lacks a blocking question tool** — `ToolSearch` returns no match, the tool call explicitly fails, or the runtime mode does not expose it (e.g., Codex edit modes where `request_user_input` is unavailable). A pending schema load is not a fallback trigger; call `ToolSearch` first per the pre-load rule. Rendering a question as narrative text because the tool feels inconvenient, because the model is in report-formatting mode, or because the instruction was buried in a long skill is a bug. A question that calls for a user decision must either fire the tool or fall back loudly.
 
 ## Severity Scale
 
@@ -112,42 +112,42 @@ Routing rules:
 
 | Agent | Focus |
 |-------|-------|
-| `review:ce-correctness-reviewer` | Logic errors, edge cases, state bugs, error propagation |
-| `review:ce-testing-reviewer` | Coverage gaps, weak assertions, brittle tests |
-| `review:ce-maintainability-reviewer` | Coupling, complexity, naming, dead code, abstraction debt |
-| `review:ce-project-standards-reviewer` | CLAUDE.md and AGENTS.md compliance -- frontmatter, references, naming, portability |
-| `review:ce-agent-native-reviewer` | Verify new features are agent-accessible |
-| `research:ce-learnings-researcher` | Search docs/solutions/ for past issues related to this PR |
+| `ce-correctness-reviewer` | Logic errors, edge cases, state bugs, error propagation |
+| `ce-testing-reviewer` | Coverage gaps, weak assertions, brittle tests |
+| `ce-maintainability-reviewer` | Coupling, complexity, naming, dead code, abstraction debt |
+| `ce-project-standards-reviewer` | CLAUDE.md and AGENTS.md compliance -- frontmatter, references, naming, portability |
+| `ce-agent-native-reviewer` | Verify new features are agent-accessible |
+| `ce-learnings-researcher` | Search docs/solutions/ for past issues related to this PR |
 
 **Cross-cutting conditional (selected per diff):**
 
 | Agent | Select when diff touches... |
 |-------|---------------------------|
-| `review:ce-security-reviewer` | Auth, public endpoints, user input, permissions |
-| `review:ce-performance-reviewer` | DB queries, data transforms, caching, async |
-| `review:ce-api-contract-reviewer` | Routes, serializers, type signatures, versioning |
-| `review:ce-data-migrations-reviewer` | Migrations, schema changes, backfills |
-| `review:ce-reliability-reviewer` | Error handling, retries, timeouts, background jobs |
-| `review:ce-adversarial-reviewer` | Diff >=50 changed non-test/non-generated/non-lockfile lines, or auth, payments, data mutations, external APIs |
-| `review:ce-cli-readiness-reviewer` | CLI command definitions, argument parsing, CLI framework usage, command handler implementations |
-| `review:ce-previous-comments-reviewer` | Reviewing a PR that has existing review comments or threads |
+| `ce-security-reviewer` | Auth, public endpoints, user input, permissions |
+| `ce-performance-reviewer` | DB queries, data transforms, caching, async |
+| `ce-api-contract-reviewer` | Routes, serializers, type signatures, versioning |
+| `ce-data-migrations-reviewer` | Migrations, schema changes, backfills |
+| `ce-reliability-reviewer` | Error handling, retries, timeouts, background jobs |
+| `ce-adversarial-reviewer` | Diff >=50 changed non-test/non-generated/non-lockfile lines, or auth, payments, data mutations, external APIs |
+| `ce-cli-readiness-reviewer` | CLI command definitions, argument parsing, CLI framework usage, command handler implementations |
+| `ce-previous-comments-reviewer` | Reviewing a PR that has existing review comments or threads |
 
 **Stack-specific conditional (selected per diff):**
 
 | Agent | Select when diff touches... |
 |-------|---------------------------|
-| `review:ce-dhh-rails-reviewer` | Rails architecture, service objects, session/auth choices, or Hotwire-vs-SPA boundaries |
-| `review:ce-kieran-rails-reviewer` | Rails application code where conventions, naming, and maintainability are in play |
-| `review:ce-kieran-python-reviewer` | Python modules, endpoints, scripts, or services |
-| `review:ce-kieran-typescript-reviewer` | TypeScript components, services, hooks, utilities, or shared types |
-| `review:ce-julik-frontend-races-reviewer` | Stimulus/Turbo controllers, DOM events, timers, animations, or async UI flows |
+| `ce-dhh-rails-reviewer` | Rails architecture, service objects, session/auth choices, or Hotwire-vs-SPA boundaries |
+| `ce-kieran-rails-reviewer` | Rails application code where conventions, naming, and maintainability are in play |
+| `ce-kieran-python-reviewer` | Python modules, endpoints, scripts, or services |
+| `ce-kieran-typescript-reviewer` | TypeScript components, services, hooks, utilities, or shared types |
+| `ce-julik-frontend-races-reviewer` | Stimulus/Turbo controllers, DOM events, timers, animations, or async UI flows |
 
 **CE conditional (migration-specific):**
 
 | Agent | Select when diff includes migration files |
 |-------|------------------------------------------|
-| `review:ce-schema-drift-detector` | Cross-references schema.rb against included migrations |
-| `review:ce-deployment-verification-agent` | Produces deployment checklist with SQL verification queries |
+| `ce-schema-drift-detector` | Cross-references schema.rb against included migrations |
+| `ce-deployment-verification-agent` | Produces deployment checklist with SQL verification queries |
 
 ## Review Scope
 
@@ -321,7 +321,7 @@ Pass this to every reviewer in their spawn prompt. Intent shapes *how hard each 
 
 **When intent is ambiguous:**
 
-- **Interactive mode:** Ask one question using the platform's interactive question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini): "What is the primary goal of these changes?" Do not spawn reviewers until intent is established. **Claude Code only:** if `AskUserQuestion` has not yet been loaded this session (per the Interactive mode rules pre-load), call `ToolSearch` with query `select:AskUserQuestion` first before asking. On Codex (`request_user_input`) and Gemini (`ask_user`) this preload step does not apply — the platform-native question tool is loaded by default.
+- **Interactive mode:** Ask one question using the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini): "What is the primary goal of these changes?" Do not spawn reviewers until intent is established. **Claude Code only:** if `AskUserQuestion` has not yet been loaded this session (per the Interactive mode rules pre-load), call `ToolSearch` with query `select:AskUserQuestion` first before asking. Fall back to numbered options in chat only when the harness genuinely lacks a blocking tool or the call errors (e.g., Codex edit modes) — not because a schema load is required. Never silently skip the question.
 - **Autofix/report-only/headless modes:** Infer intent conservatively from the branch name, diff, PR metadata, and caller context. Note the uncertainty in Coverage or Verdict reasoning instead of blocking.
 
 ### Stage 2b: Plan discovery (requirements verification)
@@ -625,7 +625,7 @@ After presenting findings and verdict (Stage 6), route the next steps by mode. R
 - Apply `safe_auto -> review-fixer` findings automatically without asking. These are safe by definition.
 - **Zero-remaining case:** if no `gated_auto` or `manual` findings remain after the `safe_auto` pass, skip the routing question entirely. Emit a one-line completion summary phrased so advisory and pre-existing findings (which are not handled by this flow) are not implied to be cleared. When no advisory or pre-existing findings remain in the report, `All findings resolved — N safe_auto fixes applied.` is accurate. When advisory and/or pre-existing findings do remain, use the qualified form `All actionable findings resolved — N safe_auto fixes applied. (K advisory, J pre-existing findings remain in the report.)`, omitting any zero-count clause. Follow the summary with the existing end-of-review verdict, then proceed to Step 5 per the gating rule there.
 - **Tracker pre-detection:** before rendering the routing question, consult `references/tracker-defer.md` for the session's tracker tuple `{ tracker_name, confidence, named_sink_available, any_sink_available }`. The probe runs at most once per session and is cached for the rest of the run. `named_sink_available` drives the option C label (inline tracker name only when the named sink can actually be invoked). `any_sink_available` drives whether option C is offered at all (it can still be offered when the named tracker is unreachable but `gh` or the harness task primitive works).
-- **Verify question-tool pre-load (checklist, Claude Code only).** Before firing the routing question in Claude Code, confirm `AskUserQuestion` is loaded (per Interactive mode rules at the top of this skill). If not yet loaded this session, call `ToolSearch` with query `select:AskUserQuestion` now. Do not proceed to the routing question without this verification. Rendering the question as narrative text is a bug, not a valid fallback. On Codex (`request_user_input`) and Gemini (`ask_user`) this checklist does not apply — the platform-native question tool is loaded by default and there is no `ToolSearch` preload step to perform.
+- **Verify question-tool pre-load (checklist, Claude Code only).** Before firing the routing question in Claude Code, confirm `AskUserQuestion` is loaded (per Interactive mode rules at the top of this skill). If not yet loaded this session, call `ToolSearch` with query `select:AskUserQuestion` now. Do not proceed to the routing question without this verification. Rendering the question as narrative text because the schema isn't loaded yet is a bug, not a valid fallback. On Codex and Gemini this checklist does not apply — there is no `ToolSearch` preload step to perform. (If `request_user_input` is unavailable in the current Codex runtime mode, use the numbered-list fallback described below.)
 - **Routing question.** Ask using the platform's blocking question tool (`AskUserQuestion` in Claude Code, `request_user_input` in Codex, `ask_user` in Gemini). Stem: `What should the agent do with the remaining N findings?` — use third-person voice referring to "the agent", not first-person "me" / "I". Options:
 
   ```
@@ -637,7 +637,7 @@ After presenting findings and verdict (Stage 6), route the next steps by mode. R
 
   Render option C per `references/tracker-defer.md`: when `confidence = high` AND `named_sink_available = true`, replace `[TRACKER]` with the concrete name and keep the full label (e.g., `File a Linear ticket per finding without applying fixes`). When `any_sink_available = true` but either `confidence = low` or `named_sink_available = false` (a fallback tier like GitHub Issues or the harness task primitive is working instead), use the generic label `File an issue per finding without applying fixes` — this is a whole-label substitution, not a `[TRACKER]` token swap. When `any_sink_available = false`, **omit option C entirely** and add one line to the stem explaining why (e.g., `Defer unavailable — no tracker or task-tracking primitive detected on this platform.`). The three remaining options (A, B, D) survive.
 
-  The numbered-list text fallback applies only when `ToolSearch` explicitly returns no match for the platform's question tool or the tool call errors. It does not apply when the agent simply hasn't loaded the tool yet — in that case, load it now (see the verification checklist above). On platforms genuinely without a blocking question tool, present the applicable options as a numbered list and wait for the user's reply.
+  The numbered-list text fallback applies when `ToolSearch` explicitly returns no match for the platform's question tool or the tool call errors (including Codex runtime modes where `request_user_input` is unavailable). It does not apply when the agent simply hasn't loaded the tool yet — in that case, load it now (see the verification checklist above). When the fallback applies, present the options as a numbered list and wait for the user's reply — never silently skip the question.
 
 - **Dispatch on selection.** Route by the option letter (A / B / C / D), not by the rendered label string. The option-C label varies by tracker-detection confidence (`File a [TRACKER] ticket per finding without applying fixes` for a named tracker, `File an issue per finding without applying fixes` as the generic fallback, or omitted entirely when no sink is available — see `references/tracker-defer.md`), and options A / B / D have a single canonical label each. The letter is the stable dispatch signal; the canonical labels below are shown for documentation only. A low-confidence run that rendered option C as the generic label routes to the same branch as a high-confidence run that rendered it with the named tracker.
   - (A) `Review each finding one by one` — load `references/walkthrough.md` and enter the per-finding walk-through loop. The walk-through accumulates Apply decisions in memory; Defer decisions execute inline via `references/tracker-defer.md`; Skip / Acknowledge decisions are recorded as no-action; `LFG the rest` routes through `references/bulk-preview.md`. At end of the loop, dispatch one fixer subagent for the accumulated Apply set (Step 3). Emit the unified completion report.

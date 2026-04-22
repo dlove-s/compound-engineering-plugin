@@ -16,7 +16,7 @@ describe("ce-code-review contract", () => {
     expect(content).toContain("mode:report-only")
     expect(content).toContain("mode:headless")
     expect(content).toContain(".context/compound-engineering/ce-code-review/<run-id>/")
-    expect(content).toContain("Do not create residual todos or `.context` artifacts.")
+    expect(content).toContain("Do not write `.context` artifacts.")
     expect(content).toContain(
       "Do not start a mutating review round concurrently with browser testing on the same checkout.",
     )
@@ -47,8 +47,8 @@ describe("ce-code-review contract", () => {
       "Not safe for concurrent use on a shared checkout.",
     )
 
-    // Writes artifacts but no todos, no commit/push/PR
-    expect(content).toContain("Do not create todo files.")
+    // Writes artifacts but no externalized work, no commit/push/PR
+    expect(content).toContain("Do not file tickets or externalize work.")
     expect(content).toContain(
       "Never commit, push, or create a PR",
     )
@@ -100,18 +100,32 @@ describe("ce-code-review contract", () => {
     // Stage 5 tie-breaking rule — the walk-through's recommendation is deterministic.
     expect(content).toMatch(/Skip\s*>\s*Defer\s*>\s*Apply/)
 
-    // Autofix-mode residual todo handoff is preserved (mode isolation).
+    // Autofix-mode residual handoff is the run artifact (file-based todo system removed).
     expect(content).toContain(
-      "In autofix mode, create durable todo files only for unresolved actionable findings whose final owner is `downstream-resolver`.",
+      "In autofix mode, the run artifact is the handoff.",
     )
-    expect(content).toContain("If only advisory outputs remain, create no todos.")
+    expect(content).not.toContain("ce-todo-create")
+    expect(content).not.toContain("create durable todo files")
 
-    // Tracker fallback chain explicitly forbids extending the internal todos system.
+    // Tracker fallback chain still exists for defer actions.
     const trackerDefer = await readRepoFile(
       "plugins/compound-engineering/skills/ce-code-review/references/tracker-defer.md",
     )
-    expect(trackerDefer).toContain(".context/compound-engineering/todos/")
-    expect(trackerDefer).toMatch(/Never fall back to `\.context\/compound-engineering\/todos\//)
+    expect(trackerDefer).toContain("Named tracker")
+    expect(trackerDefer).toContain("GitHub Issues via `gh`")
+    expect(trackerDefer).not.toContain(".context/compound-engineering/todos/")
+    expect(content).not.toMatch(/harness task primitive|task-tracking primitive/)
+
+    // Harness task-tracking primitive is no longer a fallback tier — it was removed
+    // because in-session tasks do not meet the durable-filing intent of a Defer action.
+    expect(trackerDefer).not.toMatch(/Harness task primitive \(last resort\)/)
+    expect(trackerDefer).not.toMatch(/Once-per-session harness-fallback confirmation/)
+    expect(trackerDefer).not.toMatch(/no-sink/)
+
+    // Non-interactive execution mode exists for autonomous callers (e.g., lfg).
+    expect(trackerDefer).toContain("## Execution Modes")
+    expect(trackerDefer).toContain("Non-interactive mode")
+    expect(trackerDefer).toMatch(/no_sink/)
 
     // Subagent template carries the why_it_matters framing guidance that replaces the
     // rejected synthesis-time rewrite pass. Assert presence of the observable-behavior
@@ -189,13 +203,6 @@ describe("ce-code-review contract", () => {
     expect(schema.properties.findings.items.properties.requires_verification.type).toBe("boolean")
     expect(schema._meta.confidence_thresholds.suppress).toContain("0.60")
 
-    const fileTodos = await readRepoFile("plugins/compound-engineering/skills/ce-todo-create/SKILL.md")
-    expect(fileTodos).toContain("/ce-code-review mode:autofix")
-    expect(fileTodos).toContain("/ce-todo-resolve")
-
-    const resolveTodos = await readRepoFile("plugins/compound-engineering/skills/ce-todo-resolve/SKILL.md")
-    expect(resolveTodos).toContain("ce-code-review mode:autofix")
-    expect(resolveTodos).toContain("safe_auto")
   })
 
   test("documents stack-specific conditional reviewers for the JSON pipeline", async () => {
@@ -298,7 +305,88 @@ describe("ce-code-review contract", () => {
 
   test("orchestration callers pass explicit mode flags", async () => {
     const lfg = await readRepoFile("plugins/compound-engineering/skills/lfg/SKILL.md")
-    expect(lfg).toContain("/ce-code-review mode:autofix")
+    expect(lfg).toMatch(/ce-code-review[^\n]*mode:autofix/)
+  })
+
+  test("ce-work shipping-workflow enforces a residual-work gate after Tier 2 review", async () => {
+    for (const path of [
+      "plugins/compound-engineering/skills/ce-work/references/shipping-workflow.md",
+      "plugins/compound-engineering/skills/ce-work-beta/references/shipping-workflow.md",
+    ]) {
+      const workflow = await readRepoFile(path)
+      await expect(readRepoFile(path.replace("shipping-workflow.md", "tracker-defer.md"))).resolves.toContain(
+        "Non-interactive mode",
+      )
+      await expect(readRepoFile(path.replace("shipping-workflow.md", "tracker-defer.md"))).resolves.not.toMatch(
+        /no-sink/,
+      )
+
+      // Gate step is explicitly labeled and required after Tier 2.
+      expect(workflow).toContain("**Residual Work Gate**")
+      expect(workflow).toMatch(/do not proceed to Final Validation/i)
+
+      // Three forward options + one abort; labels are self-contained.
+      expect(workflow).toContain("Apply/fix now")
+      expect(workflow).toContain("File tickets via project tracker")
+      expect(workflow).toContain("Accept and proceed")
+      expect(workflow).toContain("Stop — do not ship")
+
+      // Accept-and-proceed path threads findings into the PR description.
+      expect(workflow).toContain("Known Residuals")
+      expect(workflow).toContain("docs/residual-review-findings/<branch-or-head-sha>.md")
+      expect(workflow).toContain("If the user later chooses the no-PR `ce-commit` path")
+      expect(workflow).toContain("must not live only in the transient session")
+    }
+  })
+
+  test("lfg autonomously handles residuals via non-interactive tracker-defer and PR description", async () => {
+    const lfg = await readRepoFile("plugins/compound-engineering/skills/lfg/SKILL.md")
+    await expect(readRepoFile("plugins/compound-engineering/skills/lfg/references/tracker-defer.md")).resolves.toContain(
+      "Non-interactive mode",
+    )
+    await expect(readRepoFile("plugins/compound-engineering/skills/lfg/references/tracker-defer.md")).resolves.not.toMatch(
+      /no-sink/,
+    )
+
+    // Autonomous residual handoff step exists between code review and test-browser.
+    expect(lfg).toContain("Persist review autofixes")
+    expect(lfg).toContain("fix(review): apply autofix feedback")
+    expect(lfg).toContain("Do not proceed to step 6, run browser tests, or output DONE while review autofix edits remain only in the working tree.")
+    expect(lfg).toContain("there were no review autofixes to persist")
+    expect(lfg).toContain("Autonomous residual handoff")
+    expect(lfg).toMatch(/Do not prompt the user/)
+
+    // tracker-defer is invoked in non-interactive mode.
+    expect(lfg).toContain("references/tracker-defer.md")
+    expect(lfg).not.toContain("plugins/compound-engineering/skills/ce-code-review/references/tracker-defer.md")
+    expect(lfg).toMatch(/non-interactive mode/)
+
+    // Structured return buckets drive PR description content.
+    expect(lfg).toMatch(/filed/)
+    expect(lfg).toMatch(/failed/)
+    expect(lfg).toMatch(/no_sink/)
+
+    // PR description update path is non-interactive and does not route through
+    // confirmation-driven PR update skills.
+    expect(lfg).not.toContain("ce-commit-push-pr")
+    expect(lfg).toContain("gh pr edit PR_NUMBER --body-file BODY_FILE")
+    expect(lfg).toContain("## Residual Review Findings")
+    expect(lfg).toContain("docs/residual-review-findings/<branch-or-head-sha>.md")
+    expect(lfg).toContain("prefer `origin` when present")
+    expect(lfg).toContain("choose the first configured remote")
+    expect(lfg).toContain("git push --set-upstream <remote> HEAD")
+    expect(lfg).not.toContain("git push --set-upstream origin HEAD")
+    expect(lfg).toContain("Do not output DONE until either the existing PR body has been updated or this fallback file commit has been pushed.")
+
+    // Autopilot contract: never prompt, but require a durable sink before DONE.
+    expect(lfg).toContain("Do not prompt the user")
+    expect(lfg).toMatch(/Never block DONE on tracker filing failures/i)
+  })
+
+  test("ce-code-review autofix emits a residual-work summary in-chat, not only in the artifact", async () => {
+    const content = await readRepoFile("plugins/compound-engineering/skills/ce-code-review/SKILL.md")
+    expect(content).toMatch(/Emit a compact Residual Actionable Work summary/)
+    expect(content).toContain("Residual actionable work: none.")
   })
 })
 
